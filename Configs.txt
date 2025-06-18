@@ -89,6 +89,28 @@ docker-compose up --build
 run specific container in docker compose:
 docker-compose restart web
 
+Docker Compose commands
+------------------------
+
+✅ Usage
+
+▶️ Start (up) a specific container
+docker-compose up <service-name>
+📌 Example:
+docker-compose up mvcapp
+* Starts only mvcapp and its depends_on containers (like db if listed).
+
+🔁 Rebuild and start only one container
+docker-compose up --build <service-name>
+⏹️ Stop a specific container
+docker-compose stop <service-name>
+❌ Take down a specific container
+docker-compose rm -sf <service-name>
+* -s skips confirmation; -f forces removal.
+
+📋 To see all available services:
+docker-compose config --services
+
 
 
 Swagger for Debug and Test

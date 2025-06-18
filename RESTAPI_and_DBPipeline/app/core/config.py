@@ -1,11 +1,12 @@
-import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "FastAPI App"
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:Admin123@localhost:5432/mscds")
+    DATABASE_URL: str
+    ENV: str = "development"  # 👈 Add this line
 
     class Config:
         env_file = ".env"
+        extra = "forbid"
 
 settings = Settings()

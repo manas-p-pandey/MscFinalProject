@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
 
-  web:
+  api:
     build:
       context: ./RESTAPI_and_DBPipeline
       dockerfile: Dockerfile
@@ -33,11 +33,11 @@ services:
       dockerfile: Dockerfile
     container_name: DT_FrontEnd
     ports:
-      - "8080:44375"  # host:container (change if your app listens on a different port)
+      - "8080:8080"
     depends_on:
-      - web
+      - api
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
 
   pgadmin:
     image: dpage/pgadmin4
