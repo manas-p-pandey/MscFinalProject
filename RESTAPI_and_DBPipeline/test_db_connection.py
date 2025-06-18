@@ -3,7 +3,7 @@ import asyncpg
 
 async def test_connection():
     try:
-        conn = await asyncpg.connect("postgresql://postgres:Admin123@db:5432/mscds")
+        conn = await asyncpg.connect("postgresql://postgres:Admin123@localhost:5432/mscds")
         print("✅ Connection successful!")
         await conn.close()
     except Exception as e:
