@@ -31,5 +31,6 @@
 
 # Dot net dll and compiled files
 *bin/
+*obj/
 *.user
 

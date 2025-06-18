@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
     container_name: DT_FrontEnd
     ports:
-      - "8080:80"  # host:container (change if your app listens on a different port)
+      - "8080:44375"  # host:container (change if your app listens on a different port)
     depends_on:
       - web
     environment:
