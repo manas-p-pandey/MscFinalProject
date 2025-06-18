@@ -10,3 +10,4 @@ class Settings(BaseSettings):
         extra = "forbid"  # default, can use "allow" to silence this error
 
 settings = Settings()
+settings.DATABASE_URL = "postgresql+asyncpg://postgres:Admin123@db:5432/mscds"

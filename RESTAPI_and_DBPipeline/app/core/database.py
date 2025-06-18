@@ -1,8 +1,23 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from app.core.config import settings
+from sqlalchemy.orm import sessionmaker, declarative_base
+from app.core.config import settings  # Make sure this has DATABASE_URL
 
-engine = create_async_engine(settings.DATABASE_URL, future=True, echo=True)
-SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# Async SQLAlchemy engine
+engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
+
+# Async session maker
+SessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+# Base class for models
 Base = declarative_base()
+
+# Sync engine (for startup table creation only)
+from sqlalchemy import create_engine
+sync_engine = create_engine(
+    settings.DATABASE_URL.replace("postgresql+asyncpg", "postgresql"),
+    echo=True
+)

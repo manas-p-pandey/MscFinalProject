@@ -1,0 +1,78 @@
+PostgreSQL
+---------------------
+docker pull: docker pull postgres
+
+docker run: docker run --name postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=Admin123 \
+  -e POSTGRES_DB=mscds \
+  -p 5432:5432 \
+  -d postgres
+
+user: postgres
+password: Admin123
+url: http://localhost:5432
+
+PGadmin 4
+---------------------------------------
+docker pull: docker pull dpage/pgadmin4
+
+docker run: docker run --name pgadmin -p 5050:80 -e PGADMIN_DEFAULT_EMAIL=manas.p.pandey@outlook.com -e PGADMIN_DEFAULT_PASSWORD=Admin@123 -d dpage/pgadmin4
+
+user: manas.p.pandey@outlook.com
+password: Admin@123
+url: http://localhost:5050/
+
+
+Python Workspace Setup - RESTAPI
+--------------------------------
+RESTAPI_AND_DBPIPELINE
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── models/
+│   │   └── user.py
+│   ├── schemas/
+│   │   └── user.py
+│   ├── api/
+│   │   └── routes/
+│   │       └── user.py
+│   ├── services/
+│   │   └── user_service.py
+│   ├── core/
+│   │   ├── config.py
+│   │   └── database.py
+├── alembic/
+│   └── versions/
+├── alembic.ini
+├── .env
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── run.py
+alembic init alembic
+
+setup virtual environment
+-------------------------
+
+python -m venv .venv
+
+.\.venv\Scripts\activate
+
+pip install -r requirements.txt
+
+To Run from VS Terminal
+-----------------------
+python run.py
+
+
+To Deploy using Docker command
+------------------------------
+
+
+
+
+Swagger for Debug and Test
+--------------------------
+http://localhost:8000/docs
+
