@@ -34,3 +34,5 @@
 *obj/
 *.user
 
+DT_App/obj/Debug/net9.0/DT_App.AssemblyInfo.cs
+DT_App/obj/Debug/net9.0/DT_App.AssemblyInfoInputs.cache
