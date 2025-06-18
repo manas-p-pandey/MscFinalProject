@@ -24,6 +24,13 @@ password: Admin@123
 url: http://localhost:5050/
 
 
+Use this in pgAdmin:
+Host name/address: db
+Port: 5432
+Username: mscds
+Password: Admin123
+
+
 Python Workspace Setup - RESTAPI
 --------------------------------
 RESTAPI_AND_DBPIPELINE
@@ -61,14 +68,26 @@ python -m venv .venv
 
 pip install -r requirements.txt
 
+Test Database connection
+------------------------
+
+
+
 To Run from VS Terminal
 -----------------------
 python run.py
 
 
-To Deploy using Docker command
+To Deploy Entire Project on docker
 ------------------------------
+remove existing container and image:
+docker-compose down -v
 
+update image and run container:
+docker-compose up --build
+
+run specific container in docker compose:
+docker-compose restart web
 
 
 

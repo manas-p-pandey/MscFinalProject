@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "XzGPR1hG+Tg=",
+  "dgSpecHash": "myksK0jd7Jw=",
   "success": true,
-  "projectFilePath": "D:\\OneDrive - University of Roehampton\\Documents\\MScDataScience\\Projects\\MSc_Project\\SourceCode\\MscFinalProject\\FrontEnd\\DT_App\\DT_App.csproj",
+  "projectFilePath": "D:\\OneDrive - University of Roehampton\\Documents\\MScDataScience\\Projects\\MSc_Project\\SourceCode\\MscFinalProject\\DT_App\\DT_App.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\manas\\.nuget\\packages\\microsoft.visualstudio.azure.containers.tools.targets\\1.21.0\\microsoft.visualstudio.azure.containers.tools.targets.1.21.0.nupkg.sha512"
   ],

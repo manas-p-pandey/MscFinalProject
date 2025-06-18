@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Admin123
+      POSTGRES_DB: mscds
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build:
+      context: ./RESTAPI_and_DBPipeline
+      dockerfile: Dockerfile
+    container_name: DT_RestAPI
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./RESTAPI_and_DBPipeline:/app
+    depends_on:
+      - db
+    env_file:
+      - ./RESTAPI_and_DBPipeline/.env
+
+  mvcapp:
+    build:
+      context: ./DT_App
+      dockerfile: Dockerfile
+    container_name: DT_FrontEnd
+    ports:
+      - "8080:80"  # host:container (change if your app listens on a different port)
+    depends_on:
+      - web
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: manas.p.pandey@outlook.com
+      PGADMIN_DEFAULT_PASSWORD: Admin@123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  pgdata:
+  pgadmin_data:
