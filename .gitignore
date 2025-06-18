@@ -1,18 +1,19 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
+*__pycache__/
 *.py[cod]
 *$py.class
 
 # Virtual environment
-.venv/
-venv/
+*.venv/
+*venv/
 
 # VSCode settings (optional)
-.vscode/
+*.vscode/
+*.vs/
 
 # macOS and Windows files
-.DS_Store
-Thumbs.db
+*.DS_Store
+*Thumbs.db
 
 # Logs
 *.log
@@ -21,8 +22,7 @@ Thumbs.db
 .pytest_cache/
 
 # Environment files
-.env
-*.env
+*.env/
 
 # SQLite DB or cache files (if any)
 *.sqlite3
@@ -30,6 +30,6 @@ Thumbs.db
 *.pid
 
 # Dot net dll and compiled files
-*.pdb
-*.dll
+*bin/
 *.user
+
