@@ -28,3 +28,8 @@ Thumbs.db
 *.sqlite3
 *.db
 *.pid
+
+# Dot net dll and compiled files
+*.pdb
+*.dll
+*.user
