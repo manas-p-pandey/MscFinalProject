@@ -31,6 +31,26 @@ Username: mscds
 Password: Admin123
 
 
+Kafka with/without Kafdrop UI container
+--------------------------------------
+docker-compose up --build <kafka|kafdrop>
+docker-compose stop <kafka|kafdrop>
+docker-compose rm -sf <kafka|kafdrop>
+
+http://localhost:9000/
+
+
+
+
+Redis with/without Redis commander UI container
+--------------------------------------
+docker-compose up --build <redis|redis-commander>
+docker-compose stop <redis|redis-commander>
+docker-compose rm -sf <redis|redis-commander>
+
+
+
+
 Python Workspace Setup - RESTAPI
 --------------------------------
 RESTAPI_AND_DBPIPELINE
