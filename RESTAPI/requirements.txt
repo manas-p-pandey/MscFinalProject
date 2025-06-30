@@ -8,3 +8,6 @@ pydantic-settings>=2.0
 pydantic[email]
 psycopg2-binary>=2.9
 python-dotenv
+kafka-python 
+psycopg2-binary 
+requests

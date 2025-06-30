@@ -15,17 +15,17 @@ services:
 
   api:
     build:
-      context: ./RESTAPI_and_DBPipeline
+      context: ./RESTAPI
       dockerfile: Dockerfile
     container_name: DT_RestAPI
     ports:
       - "8000:8000"
     volumes:
-      - ./RESTAPI_and_DBPipeline:/app
+      - ./RESTAPI:/app
     depends_on:
       - db
     env_file:
-      - ./RESTAPI_and_DBPipeline/.env
+      - ./RESTAPI/.env
 
   mvcapp:
     build:
@@ -60,9 +60,9 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://kafka:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
@@ -71,6 +71,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
   kafdrop:
     image: obsidiandynamics/kafdrop
@@ -78,9 +79,39 @@ services:
     ports:
       - "9000:9000"
     environment:
-      - KAFKA_BROKERCONNECT=kafka:29092
+      - KAFKA_BROKERCONNECT=kafka:9092
     depends_on:
       - kafka
+
+  data_producer:
+    container_name: data_producer
+    build: ./ingestion_service
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=mscds
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Admin123
+      - PYTHONUNBUFFERED=1
+    command: ["python", "-u", "producer.py"]
+    depends_on:
+      - db
+      - kafka
+
+  data_consumer:
+    container_name: data_consumer
+    build: ./ingestion_service
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=mscds
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Admin123
+      - PYTHONUNBUFFERED=1
+    command: ["python", "-u", "consumer.py"]
+    depends_on:
+      - kafka
+      - db
   
   redis:
     image: redis:latest
