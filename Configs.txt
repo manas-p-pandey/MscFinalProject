@@ -137,3 +137,9 @@ Swagger for Debug and Test
 --------------------------
 http://localhost:8000/docs
 
+APIKey for OpenWeather
+--------------------------------
+dashboard url = https://home.openweathermap.org/
+0fb0f50c2badb10762006b6384c5b5da
+
+url = https://api.openweathermap.org/data/3.0/onecall?lat=33.44&lon=-94.04&exclude=current,minutely,daily,alerts&appid=0fb0f50c2badb10762006b6384c5b5da

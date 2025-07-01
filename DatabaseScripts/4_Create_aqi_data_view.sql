@@ -1,7 +1,10 @@
--- AQI data quesries
+-- View: public.aqi_data_view
 
-SELECT 
-    aqi.id,
+-- DROP VIEW public.aqi_data_view;
+
+CREATE OR REPLACE VIEW public.aqi_data_view
+ AS
+ SELECT DISTINCT aqi.id,
     aqi.site_code,
     site.site_name,
     site.site_type,
@@ -17,11 +20,10 @@ SELECT
     aqi.oxides_of_nitrogen,
     aqi.pm10,
     aqi.pm25
-FROM 
-    public.aqi_table AS aqi
-JOIN 
-    public.aqi_site_table AS site
-ON 
-    aqi.site_code = site.site_code
-ORDER BY 
-    aqi.measurement_datetime DESC;
+   FROM aqi_table aqi
+     JOIN aqi_site_table site ON aqi.site_code = site.site_code
+  ORDER BY aqi.measurement_datetime DESC;
+
+ALTER TABLE public.aqi_data_view
+    OWNER TO postgres;
+
