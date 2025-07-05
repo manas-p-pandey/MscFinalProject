@@ -58,7 +58,7 @@ CREATE OR REPLACE VIEW public.aqi_data_view
      JOIN site_table site ON aqi.site_code = site.site_code
   ORDER BY aqi.measurement_datetime DESC;
 
-ALTER TABLE public.aqi_data_view
+ALTER VIEW public.aqi_data_view
     OWNER TO postgres;
 """)
 conn.commit()

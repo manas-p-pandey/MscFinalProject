@@ -28,7 +28,7 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-# Get site codes from existing aqi_site_table
+# Get site codes from existing site_table
 cursor.execute("SELECT site_code FROM site_table;")
 site_codes = [row[0] for row in cursor.fetchall()]
 print("✅ Site codes fetched:", site_codes)
@@ -36,15 +36,8 @@ print("✅ Site codes fetched:", site_codes)
 # Main loop
 while True:
     for site_code in site_codes:
-        cursor.execute("SELECT MAX(measurement_datetime) FROM aqi_table WHERE site_code = %s", (site_code,))
-        result = cursor.fetchone()
-        last_dt = result[0]
-
-        if last_dt:
-            start_date = last_dt.strftime("%Y-%m-%d")
-        else:
-            start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-
+        # Always go back 365 days by default
+        start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
         end_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         url = f"https://api.erg.ic.ac.uk/AirQuality/Data/Wide/Site/SiteCode={site_code}/StartDate={start_date}/EndDate={end_date}/Json"
 
@@ -56,20 +49,39 @@ while True:
                 data_json = resp.json()
                 records = data_json.get("AirQualityData", {}).get("RawAQData", {}).get("Data", [])
 
-                filtered_records = [
-                    rec for rec in records
-                    if any(rec.get(f"@Data{i}") not in (None, "", " ") for i in range(1, 6))
-                ]
+                # Check each record before adding
+                records_to_send = []
+                for rec in records:
+                    dt_str = rec.get("@MeasurementDateGMT")
+                    if not dt_str:
+                        continue
 
-                if filtered_records:
+                    # Check if at least one data field has value
+                    has_value = any(rec.get(f"@Data{i}") not in (None, "", " ") for i in range(1, 6))
+                    if not has_value:
+                        continue
+
+                    # Check if record already exists
+                    cursor.execute("""
+                        SELECT 1 FROM aqi_table
+                        WHERE site_code = %s AND measurement_datetime = %s
+                    """, (site_code, dt_str))
+                    if cursor.fetchone():
+                        print(f"⏭️ Skipping existing record for {site_code} at {dt_str}")
+                        continue
+
+                    # Add to list if not found
+                    records_to_send.append(rec)
+
+                if records_to_send:
                     payload = {
                         "site_code": site_code,
-                        "data": filtered_records
+                        "data": records_to_send
                     }
                     producer.send("aqi_data", payload)
-                    print(f"✅ Sent {len(filtered_records)} records to Kafka for {site_code}")
+                    print(f"✅ Sent {len(records_to_send)} new records to Kafka for {site_code}")
                 else:
-                    print(f"⚠️ No valid data to send for {site_code}")
+                    print(f"⚠️ No new records to send for {site_code}")
 
             else:
                 print(f"❌ Error fetching data: HTTP {resp.status_code}")

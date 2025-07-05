@@ -78,9 +78,10 @@ JOIN
     site_table s
 ON
     w.latitude = s.latitude
-    AND w.longitude = s.longitude;
+    AND w.longitude = s.longitude
+ORDER BY local_datetime DESC;
 
-ALTER TABLE public.weather_data_view
+ALTER VIEW public.weather_data_view
     OWNER TO postgres;
 
 """)

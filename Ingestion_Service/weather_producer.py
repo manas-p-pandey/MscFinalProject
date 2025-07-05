@@ -29,9 +29,7 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-# Your existing AQI table logic remains (do not change)
-
-# Weather data ingestion
+# Fetch locations
 cursor.execute("SELECT DISTINCT latitude, longitude FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;")
 locations = cursor.fetchall()
 
@@ -39,15 +37,25 @@ locations = cursor.fetchall()
 for lat, lon in locations:
     print(f"🔄 Processing weather for lat: {lat}, lon: {lon}")
 
-    # Go back 100 days
-    for days_ago in range(1, 30):
+    # From 30 days ago up to now
+    for days_ago in range(365, -4, -1):
         dt = datetime.now() - timedelta(days=days_ago)
-        # Use noon time (for example) or each hour
         for hour in range(0, 24):
             target_time = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+
+            # Check if record exists
+            cursor.execute(
+                "SELECT 1 FROM weather_table WHERE latitude = %s AND longitude = %s AND timestamp = %s",
+                (lat, lon, target_time)
+            )
+            if cursor.fetchone():
+                print(f"⏭️ Skipping (already exists): {target_time}")
+                continue  # Skip to next hour
+
             epoch_time = int(target_time.timestamp())
             url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={lat}&lon={lon}&dt={epoch_time}&appid={OPENWEATHER_API_KEY}"
-            print (f"URL : {url}")
+            print(f"🌐 URL: {url}")
+
             try:
                 resp = requests.get(url)
                 if resp.status_code == 200:

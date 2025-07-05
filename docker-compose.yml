@@ -177,6 +177,38 @@ services:
       - kafka
       - db
       - site_consumer
+
+  traffic_producer:
+    container_name: traffic_producer
+    build: ./ingestion_service
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=mscds
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Admin123
+      - PYTHONUNBUFFERED=1
+    command: ["python", "-u", "traffic_producer.py"]
+    depends_on:
+      - db
+      - kafka
+      - site_producer
+
+  traffic_consumer:
+    container_name: traffic_consumer
+    build: ./ingestion_service
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=mscds
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Admin123
+      - PYTHONUNBUFFERED=1
+    command: ["python", "-u", "traffic_consumer.py"]
+    depends_on:
+      - kafka
+      - db
+      - site_consumer
   
   redis:
     image: redis:latest
