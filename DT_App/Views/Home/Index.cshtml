@@ -1,19 +1,9 @@
 ﻿@{
-    ViewData["Title"] = "Cesium 3D Globe";
+    ViewData["Title"] = "Home";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="container mt-4">
-    <h2 class="text-center mb-4">CesiumJS Globe in ASP.NET Core MVC</h2>
+    <h2 class="text-center mb-4">Home Page</h2>
 </div>
 
-<div id="cesiumContainer"></div>
-
-<script>
-    window.CESIUM_BASE_URL = "https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/";
-
-    const viewer = new Cesium.Viewer("cesiumContainer", {
-        timeline: true,
-        animation: true
-    });
-</script>
