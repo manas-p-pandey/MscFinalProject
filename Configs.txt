@@ -155,3 +155,9 @@ password: Admin@123
 dashboard url: https://api-portal.tfl.gov.uk/
 
 road api url = https://api.tfl.gov.uk/Road/all/Street/Disruption[?startDate][&endDate]
+
+
+Maps Details to integrate in CesiumJS
+--------------------------------------
+
+https://docs.maptiler.com/cesium/how-to-use-cesium/
