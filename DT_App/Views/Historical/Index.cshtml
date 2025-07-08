@@ -1,7 +1,11 @@
-﻿@{
-    ViewData["Title"] = "Historical Status";
+﻿@using Newtonsoft.Json
+@{
+    var sites = ViewBag.SiteList as List<DT_App.Models.SiteModel>;
+    var siteJson = JsonConvert.SerializeObject(sites);
+    ViewData["Title"] = "Forecasted Status";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
 <style>
     .top-bar {
         display: flex;
@@ -62,6 +66,11 @@
         overflow: hidden;
     }
 </style>
+
+<script>
+    window.siteData = @Html.Raw(siteJson);
+    console.log("Loaded siteData globally:", window.siteData);
+</script>
 
 <div class="top-bar">
     <h2>@ViewData["Title"] - <label id="lblSubView">Map View</label></h2>

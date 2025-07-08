@@ -1,41 +1,62 @@
 ﻿using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using DT_App.Models;
+using DT_App.ServiceClient;
 
 namespace DT_App.Controllers
 {
     public class ForecastController : Controller
     {
-        private readonly ILogger<ForecastController> _logger;
+        private readonly SiteClient _siteClient;
 
-        public ForecastController(ILogger<ForecastController> logger)
+        public ForecastController(SiteClient siteClient)
         {
-            _logger = logger;
+            _siteClient = siteClient;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            var result = await SetupViewModel();
             return View();
         }
 
-        public IActionResult TrafficPartial()
+        public async Task<IActionResult> TrafficPartial()
         {
+            //var result = await SetupViewModel();
             return PartialView("_TrafficPartial");
         }
 
-        public IActionResult WeatherPartial()
+        public async Task<IActionResult> WeatherPartial()
         {
+            //var result = await SetupViewModel();
             return PartialView("_WeatherPartial");
         }
 
-        public IActionResult PollutionPartial()
+        public async Task<IActionResult> PollutionPartial()
         {
+            //var result = await SetupViewModel();
             return PartialView("_PollutionPartial");
         }
 
-        public IActionResult CombinedPartial()
+        public async Task<IActionResult> CombinedPartial()
         {
+            //var result = await SetupViewModel();
             return PartialView("_CombinedPartial");
+        }
+
+        private async Task<bool> SetupViewModel()
+        {
+            try
+            {
+                ViewBag.SiteList = await _siteClient.GetSitesAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
