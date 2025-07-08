@@ -29,6 +29,6 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 # Add your override here
-ENV ApiSettings__BaseUrl=http://fastapi:8000
+ENV ApiSettings__BaseUrl=http://api:8000
 
 ENTRYPOINT ["dotnet", "DT_App.dll"]
