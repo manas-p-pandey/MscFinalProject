@@ -11,6 +11,6 @@ app = FastAPI(title=settings.APP_NAME)
 def create_tables():
     Base.metadata.create_all(bind=sync_engine)
 
-app.include_router(user.router, prefix="/users", tags=["Users"])
-app.include_router(logs.router, prefix="/logs", tags=["Logs"])
+# app.include_router(user.router, prefix="/users", tags=["Users"])
+# app.include_router(logs.router, prefix="/logs", tags=["Logs"])
 app.include_router(site.router, prefix="/sites", tags=["Sites"])
