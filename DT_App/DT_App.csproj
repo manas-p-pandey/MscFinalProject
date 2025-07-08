@@ -17,6 +17,7 @@
     <Folder Include="wwwroot\lib\cesium-js\dist\css\" />
     <Folder Include="wwwroot\lib\cesium-js\dist\js\" />
     <Folder Include="wwwroot\lib\font-awesome\dist\css\" />
+    <Folder Include="wwwroot\images\" />
   </ItemGroup>
 
 </Project>
