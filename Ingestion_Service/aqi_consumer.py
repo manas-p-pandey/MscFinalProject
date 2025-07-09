@@ -25,21 +25,28 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS aqi_table (
     id SERIAL PRIMARY KEY,
     site_code TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     measurement_datetime TIMESTAMP NOT NULL,
-    nitric_oxide DOUBLE PRECISION,
-    nitrogen_dioxide DOUBLE PRECISION,
-    oxides_of_nitrogen DOUBLE PRECISION,
+    aqi INTEGER,
+    co DOUBLE PRECISION,
+    no DOUBLE PRECISION,
+    no2 DOUBLE PRECISION,
+    o3 DOUBLE PRECISION,
+    so2 DOUBLE PRECISION,
+    pm2_5 DOUBLE PRECISION,
     pm10 DOUBLE PRECISION,
-    pm25 DOUBLE PRECISION,
+    nh3 DOUBLE PRECISION,
     UNIQUE (site_code, measurement_datetime)
 );
 """)
+conn.commit()
 
+# Create or replace view
 cursor.execute("""
-CREATE OR REPLACE VIEW public.aqi_data_view
- AS
- SELECT DISTINCT aqi.id,
-    aqi.site_code,
+CREATE OR REPLACE VIEW public.aqi_data_view AS
+SELECT
+    site.site_code,
     site.site_name,
     site.site_type,
     site.local_authority_name,
@@ -48,21 +55,41 @@ CREATE OR REPLACE VIEW public.aqi_data_view
     site.date_opened,
     site.date_closed,
     site.site_link,
-    aqi.measurement_datetime,
-    aqi.nitric_oxide,
-    aqi.nitrogen_dioxide,
-    aqi.oxides_of_nitrogen,
-    aqi.pm10,
-    aqi.pm25
-   FROM aqi_table aqi
-     JOIN site_table site ON aqi.site_code = site.site_code
-  ORDER BY aqi.measurement_datetime DESC;
+    DATE(aqi.measurement_datetime) AS measurement_date,
+    ROUND(AVG(aqi.aqi))::INTEGER AS mean_aqi,
+    ROUND(AVG(aqi.co)::NUMERIC, 2) AS mean_co,
+    ROUND(AVG(aqi.no)::NUMERIC, 2) AS mean_no,
+    ROUND(AVG(aqi.no2)::NUMERIC, 2) AS mean_no2,
+    ROUND(AVG(aqi.o3)::NUMERIC, 2) AS mean_o3,
+    ROUND(AVG(aqi.so2)::NUMERIC, 2) AS mean_so2,
+    ROUND(AVG(aqi.pm2_5)::NUMERIC, 2) AS mean_pm2_5,
+    ROUND(AVG(aqi.pm10)::NUMERIC, 2) AS mean_pm10,
+    ROUND(AVG(aqi.nh3)::NUMERIC, 2) AS mean_nh3
+FROM
+    aqi_table aqi
+JOIN
+    site_table site
+ON
+    aqi.site_code = site.site_code
+GROUP BY
+    site.site_code,
+    site.site_name,
+    site.site_type,
+    site.local_authority_name,
+    site.latitude,
+    site.longitude,
+    site.date_opened,
+    site.date_closed,
+    site.site_link,
+    DATE(aqi.measurement_datetime)
+ORDER BY
+    measurement_date DESC;
 
 ALTER VIEW public.aqi_data_view
     OWNER TO postgres;
 """)
 conn.commit()
-print("✅ aqi_table checked or created.")
+print("✅ aqi_table and aqi_data_view checked or created.")
 
 # Kafka consumer
 consumer = KafkaConsumer(
@@ -79,39 +106,34 @@ print("✅ AQI consumer started.")
 for message in consumer:
     payload = message.value
     site_code = payload.get("site_code")
+    lat = payload.get("latitude")
+    lon = payload.get("longitude")
     data_records = payload.get("data", [])
 
     for rec in data_records:
         try:
-            measurement_dt = rec["@MeasurementDateGMT"]
+            measurement_dt = rec.get("measurement_datetime")
+            components = rec.get("components", {})
 
-            insert_dict = {
-                "nitric_oxide": float(rec.get("@Data1")) if rec.get("@Data1") not in (None, "", " ") else None,
-                "nitrogen_dioxide": float(rec.get("@Data2")) if rec.get("@Data2") not in (None, "", " ") else None,
-                "oxides_of_nitrogen": float(rec.get("@Data3")) if rec.get("@Data3") not in (None, "", " ") else None,
-                "pm10": float(rec.get("@Data4")) if rec.get("@Data4") not in (None, "", " ") else None,
-                "pm25": float(rec.get("@Data5")) if rec.get("@Data5") not in (None, "", " ") else None
-            }
+            aqi_value = rec.get("aqi")
 
-            if all(v is None for v in insert_dict.values()):
-                continue
-
-            columns_str = ", ".join(insert_dict.keys())
-            placeholders_str = ", ".join(['%s'] * len(insert_dict))
-
-            sql = f"""
+            cursor.execute("""
                 INSERT INTO aqi_table (
-                    site_code, measurement_datetime, {columns_str}
-                ) VALUES (
-                    %s, %s, {placeholders_str}
-                )
+                    site_code, latitude, longitude, measurement_datetime,
+                    aqi, co, no, no2, o3, so2, pm2_5, pm10, nh3
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (site_code, measurement_datetime) DO NOTHING;
-            """
-
-            cursor.execute(sql, (
-                site_code,
-                measurement_dt,
-                *insert_dict.values()
+            """, (
+                site_code, lat, lon, measurement_dt,
+                aqi_value,
+                components.get("co"),
+                components.get("no"),
+                components.get("no2"),
+                components.get("o3"),
+                components.get("so2"),
+                components.get("pm2_5"),
+                components.get("pm10"),
+                components.get("nh3")
             ))
             conn.commit()
             print(f"✅ Inserted AQI record for {site_code} at {measurement_dt}")

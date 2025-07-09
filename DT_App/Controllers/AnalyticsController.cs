@@ -7,11 +7,11 @@ using DT_App.ServiceClient;
 
 namespace DT_App.Controllers
 {
-    public class CurrentController : Controller
+    public class AnalyticsController : Controller
     {
         private readonly SiteClient _siteClient;
 
-        public CurrentController(SiteClient siteClient)
+        public AnalyticsController(SiteClient siteClient)
         {
             _siteClient = siteClient;
         }
