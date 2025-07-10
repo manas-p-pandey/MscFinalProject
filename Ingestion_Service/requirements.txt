@@ -4,3 +4,7 @@ requests
 python-dotenv
 geopy
 pandas
+numpy
+scikit-learn
+tensorflow
+joblib

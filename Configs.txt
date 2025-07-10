@@ -176,27 +176,5 @@ road api url = https://api.tfl.gov.uk/Road/all/Street/Disruption[?startDate][&en
 API Details for Traffic Flow from TOM TOM API
 ---------------------------------------------
 
-To obtain traffic congestion data for a specific location using TomTom APIs, you'll primarily use the Traffic Flow API and potentially the Traffic Incidents API. The Traffic Flow API provides real-time road speed and travel time information, while the Traffic Incidents API offers details on incidents like accidents or road closures. By combining these APIs, you can get a comprehensive view of traffic conditions at a given latitude and longitude with varying degrees of severity. 
-Here's a breakdown of how to approach this:
-1. Understand the APIs:
-Traffic Flow API:
-This API provides current speed, free-flow speed (speed under ideal conditions), current travel time, and free-flow travel time for road segments. You can query this API by providing a location (latitude and longitude) on or near the road segment you're interested in. 
-Traffic Incidents API:
-This API delivers information about traffic incidents such as accidents, road closures, and construction zones. It provides details like the incident's location, severity, and length (in time). 
-2. Request Data:
-Traffic Flow Data:
-You'll need to make a GET request to the Traffic Flow API endpoint, specifying the latitude and longitude of your desired location. 
-The response will include currentSpeed, freeFlowSpeed, currentTravelTime, and freeFlowTravelTime for the road segment near your specified coordinates. 
-The confidence value in the response indicates the reliability of the speed data. 
-Traffic Incident Data:
-Use the Traffic Incidents API to retrieve details about incidents near your location. 
-You'll likely need to filter the results based on your specific location (latitude and longitude) to get relevant incident data. 
-3. Interpret the Results:
-Severity:
-The severity of traffic congestion can be inferred from the comparison of currentSpeed and freeFlowSpeed (or travel times) from the Traffic Flow API. A significant difference indicates congestion. The Traffic Incidents API provides explicit severity information for incidents.
-Traffic Flow Data Interpretation:
-currentSpeed close to freeFlowSpeed means traffic is flowing well.
-A lower currentSpeed than freeFlowSpeed suggests congestion, with the difference indicating the severity.
-Traffic Incident Data Interpretation:
-The incident's type and length fields in the Traffic Incidents API provide information about the nature and duration of the disruption. 
-
+API_Key =QkezFsxMT47CUB9uL8McCQJEj7sr1rTF
+TomTom move API_Key=XpNf030bCeukHeBSuj5sEsq3xKv7hJsv

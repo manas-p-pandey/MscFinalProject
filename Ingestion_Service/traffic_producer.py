@@ -1,103 +1,159 @@
-import requests
 import pandas as pd
-from geopy.distance import geodesic
+import numpy as np
 import psycopg2
-from kafka import KafkaProducer
+import joblib
 import json
-import os
+from kafka import KafkaProducer
+from sklearn.preprocessing import StandardScaler
+from tensorflow import keras
+from datetime import datetime
 import time
-from datetime import datetime, timedelta
 
 # Config
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "mscds")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Admin123")
+KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
+POSTGRES_HOST = "db"
+POSTGRES_DB = "mscds"
+POSTGRES_USER = "postgres"
+POSTGRES_PASSWORD = "Admin123"
 
-# Connect to PostgreSQL
+# Connect to database
 conn = psycopg2.connect(
     host=POSTGRES_HOST,
     database=POSTGRES_DB,
     user=POSTGRES_USER,
     password=POSTGRES_PASSWORD
 )
-cursor = conn.cursor()
 
-# Kafka producer
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
 
-def get_congestion_data(start_date, end_date):
-    endpoint = f"https://api.tfl.gov.uk/Road/all/Street/Disruption?startDate={start_date}&endDate={end_date}"
-    response = requests.get(endpoint)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f"❌ Failed to fetch data: {response.status_code}")
-        return []
-
-def find_nearest_road(congestion_data, lat, lon):
-    if not congestion_data:
-        return None
-
-    df = pd.DataFrame(congestion_data)
-    if df.empty or 'startLat' not in df.columns or 'startLon' not in df.columns:
-        return None
-
-    df = df[df['startLat'].notnull() & df['startLon'].notnull()]
-
-    if df.empty:
-        return None
-
-    df['distance'] = df.apply(
-        lambda row: geodesic(
-            (lat, lon),
-            (row['startLat'], row['startLon'])
-        ).km,
-        axis=1
-    )
-    nearest_road = df.loc[df['distance'].idxmin()]
-    return nearest_road
-
+# Loop forever every hour
 while True:
-    try:
-        # Fetch all unique lat/lon from site table
-        cursor.execute("SELECT DISTINCT latitude, longitude, site_code FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;")
-        locations = cursor.fetchall()
+    print("⏰ Running traffic data producer loop...")
 
-        # Calculate start and end date
-        start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
-        end_date = (datetime.now() + timedelta(days=4)).strftime("%Y-%m-%d")
+    aqi_query = "SELECT * FROM aqi_table;"
+    weather_query = "SELECT * FROM weather_table;"
 
-        congestion_data = get_congestion_data(start_date, end_date)
+    aqi_df = pd.read_sql(aqi_query, conn)
+    weather_df = pd.read_sql(weather_query, conn)
 
-        for lat, lon, site_code in locations:
-            nearest_road = find_nearest_road(congestion_data, lat, lon)
-            if nearest_road is not None:
-                payload = {
-                    "site_code": site_code,
-                    "latitude": lat,
-                    "longitude": lon,
-                    "road_name": nearest_road.get('streetName'),
-                    "closure": nearest_road.get('closure'),
-                    "directions": nearest_road.get('directions'),
-                    "severity": nearest_road.get('severity'),
-                    "category": nearest_road.get('category'),
-                    "sub_category": nearest_road.get('subCategory'),
-                    "comments": nearest_road.get('comments'),
-                    "start_datetime": nearest_road.get('startDateTime'),
-                    "end_datetime": nearest_road.get('endDateTime'),
-                    "distance_km": nearest_road['distance']
-                }
-                producer.send("traffic_data", payload)
-                print(f"✅ Sent traffic data for {site_code}: {payload['road_name']} ({payload['severity']})")
+    # Check columns
+    print("AQI columns:", aqi_df.columns.tolist())
 
-        producer.flush()
+    # Convert timestamps and remove timezone
+    aqi_df["measurement_datetime"] = pd.to_datetime(aqi_df["measurement_datetime"]).dt.tz_localize(None)
+    weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"]).dt.tz_localize(None)
 
-    except Exception as e:
-        print(f"❌ Exception during traffic data ingestion: {e}")
+    # Merge
+    merged_df = pd.merge_asof(
+        aqi_df.sort_values("measurement_datetime"),
+        weather_df.sort_values("timestamp"),
+        left_on="measurement_datetime",
+        right_on="timestamp",
+        by=["latitude", "longitude"],
+        direction="nearest",
+        tolerance=pd.Timedelta("1h")
+    )
 
-    time.sleep(3600)  # Wait 1 hour before next round
+    merged_df = merged_df.dropna()
+
+    aqi_features = ["pm2_5", "pm10", "no2", "so2", "co", "o3"]
+    weather_features = ["temp", "pressure", "humidity", "wind_speed", "clouds", "visibility"]
+    features = aqi_features + weather_features
+
+    merged_df["score"] = (
+        merged_df["no2"] * 4 +
+        merged_df["pm2_5"] * 3 +
+        merged_df["pm10"] * 2 +
+        (100 - merged_df["wind_speed"] * 10) +
+        merged_df["clouds"]
+    )
+
+    threshold_high = merged_df["score"].quantile(0.66)
+    threshold_mod = merged_df["score"].quantile(0.33)
+
+    def assign_flow_category(score):
+        if score >= threshold_high:
+            return "high"
+        elif score >= threshold_mod:
+            return "moderate"
+        else:
+            return "low"
+
+    merged_df["traffic_flow"] = merged_df["score"].apply(assign_flow_category)
+
+    def inverse_density(flow):
+        if flow == "high":
+            return "low"
+        elif flow == "moderate":
+            return "moderate"
+        else:
+            return "high"
+
+    merged_df["traffic_density"] = merged_df["traffic_flow"].apply(inverse_density)
+
+    # Train model
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import LabelEncoder
+
+    flow_encoder = LabelEncoder()
+    merged_df["flow_label"] = flow_encoder.fit_transform(merged_df["traffic_flow"])
+
+    X = merged_df[features].fillna(0).values
+    y = merged_df["flow_label"].values
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+    from tensorflow.keras import layers
+
+    model = keras.Sequential([
+        layers.Dense(64, activation="relu", input_shape=(len(features),)),
+        layers.Dense(32, activation="relu"),
+        layers.Dense(3, activation="softmax")
+    ])
+
+    model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.1)
+
+    joblib.dump(scaler, "scaler.save")
+    joblib.dump(flow_encoder, "flow_encoder.save")
+    model.save("traffic_flow_model.h5")
+
+    # Producer loop
+    for idx, row in merged_df.iterrows():
+        input_data = row[features].values.reshape(1, -1)
+        input_scaled = scaler.transform(input_data)
+
+        pred_probs = model.predict(input_scaled)[0]
+        pred_label = np.argmax(pred_probs)
+        flow_category = flow_encoder.inverse_transform([pred_label])[0]
+
+        if flow_category == "high":
+            density_category = "low"
+        elif flow_category == "moderate":
+            density_category = "moderate"
+        else:
+            density_category = "high"
+
+        payload = {
+            "measurement_datetime": row["measurement_datetime"].strftime("%Y-%m-%d %H:%M:%S"),
+            "latitude": row["latitude"],
+            "longitude": row["longitude"],
+            "traffic_flow": flow_category,
+            "traffic_density": density_category
+        }
+
+        producer.send("traffic_data", payload)
+        print(f"✅ Sent: {payload}")
+
+    producer.flush()
+    print("✅ Finished producing this batch of synthetic traffic data.")
+
+    # Wait for one hour before next run
+    print("⏰ Sleeping for 1 hour...")
+    time.sleep(3600)

@@ -84,8 +84,13 @@
 
 <div class="main-container">
     <div class="test-container">
-        <p>This is your test container (30% width). You can put test data or filters here.</p>
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam.</p>
+        <p>Filters:</p>
+        <div class="col-12">
+            <div class="mb-3">
+                <label class="form-control-label">Measured Date</label>
+                <input type="date" value="@DateTime.Today" class="form-control" disabled>
+            </div>
+        </div>
     </div>
 
     <div class="content" id="contentContainer">
