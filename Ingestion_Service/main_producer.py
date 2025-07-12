@@ -25,7 +25,9 @@ def main():
 
 if __name__ == "__main__":
     last_run_hour = None
-
+    # first run when producer starts
+    main()
+    # logic to wait and call at every hour of the day if not already running
     while True:
         now = datetime.now()
         current_hour = now.hour
