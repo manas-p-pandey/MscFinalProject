@@ -83,21 +83,6 @@ services:
     depends_on:
       - kafka
 
-  site_producer:
-    container_name: site_producer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "site_producer.py"]
-    depends_on:
-      - db
-      - kafka
-
   site_consumer:
     container_name: site_consumer
     build: ./ingestion_service
@@ -113,22 +98,6 @@ services:
       - kafka
       - db
 
-  aqi_producer:
-    container_name: aqi_producer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "aqi_producer.py"]
-    depends_on:
-      - db
-      - kafka
-      - site_producer
-
   aqi_consumer:
     container_name: aqi_consumer
     build: ./ingestion_service
@@ -143,24 +112,6 @@ services:
     depends_on:
       - kafka
       - db
-      - site_consumer
-
-  weather_producer:
-    container_name: weather_producer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - OPENWEATHER_API_KEY=0fb0f50c2badb10762006b6384c5b5da
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "weather_producer.py"]
-    depends_on:
-      - db
-      - kafka
-      - site_producer
 
   weather_consumer:
     container_name: weather_consumer
@@ -176,23 +127,6 @@ services:
     depends_on:
       - kafka
       - db
-      - site_consumer
-
-  traffic_producer:
-    container_name: traffic_producer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "traffic_producer.py"]
-    depends_on:
-      - db
-      - kafka
-      - site_producer
 
   traffic_consumer:
     container_name: traffic_consumer
@@ -208,7 +142,26 @@ services:
     depends_on:
       - kafka
       - db
+
+  main_producer:
+    container_name: all_data_producer_sync
+    build: ./ingestion_service
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=mscds
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Admin123
+      - OPENWEATHER_API_KEY=8f16726775b3db39aba6f270add66af2
+      - PYTHONUNBUFFERED=1
+    command: ["python", "-u", "main_producer.py"]
+    depends_on:
+      - db
+      - kafka
       - site_consumer
+      - aqi_consumer
+      - weather_consumer
+      - traffic_consumer
   
   redis:
     image: redis:latest

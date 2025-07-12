@@ -6,35 +6,35 @@ import time
 from datetime import datetime, timedelta
 import os
 
-# Config
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "mscds")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Admin123")
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "0fb0f50c2badb10762006b6384c5b5da")
+def produce_aqi_data():
+    # Config
+    KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "mscds")
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Admin123")
+    OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "0fb0f50c2badb10762006b6384c5b5da")
 
-# Connect to PostgreSQL
-conn = psycopg2.connect(
-    host=POSTGRES_HOST,
-    database=POSTGRES_DB,
-    user=POSTGRES_USER,
-    password=POSTGRES_PASSWORD
-)
-cursor = conn.cursor()
+    # Connect to PostgreSQL
+    conn = psycopg2.connect(
+        host=POSTGRES_HOST,
+        database=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD
+    )
+    cursor = conn.cursor()
 
-# Kafka producer
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+    # Kafka producer
+    producer = KafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
 
-# Get distinct lat/lon and site_code
-cursor.execute("SELECT DISTINCT latitude, longitude, site_code FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;")
-locations = cursor.fetchall()
-print("✅ Sites fetched:", len(locations))
+    # Get distinct lat/lon and site_code
+    cursor.execute("SELECT DISTINCT latitude, longitude, site_code FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;")
+    locations = cursor.fetchall()
+    print("✅ Sites fetched:", len(locations))
 
-while True:
     for lat, lon, site_code in locations:
         for day_offset in range(0, 366):
             target_date = datetime.now() - timedelta(days=day_offset)
@@ -61,7 +61,7 @@ while True:
                             continue
 
                         measurement_dt = datetime.utcfromtimestamp(dt_epoch).strftime("%Y-%m-%d %H:%M:%S")
-                        main_json = rec.get("main",{})
+                        main_json = rec.get("main", {})
                         aqi = main_json.get("aqi")
                         cursor.execute("""
                             SELECT 1 FROM aqi_table
@@ -73,7 +73,7 @@ while True:
 
                         records_to_send.append({
                             "measurement_datetime": measurement_dt,
-                            "aqi":aqi,
+                            "aqi": aqi,
                             "components": rec.get("components", {})
                         })
 
@@ -96,4 +96,9 @@ while True:
                 print(f"❌ Exception fetching AQI data for {site_code} on {target_date.strftime('%Y-%m-%d')}: {e}")
 
     producer.flush()
+    print("✅ AQI data production completed.")
+
+# Optional: if you want this script to also run standalone
+if __name__ == "__main__":
+    produce_aqi_data()
     time.sleep(3600)

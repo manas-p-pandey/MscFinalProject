@@ -4,45 +4,41 @@ import psycopg2
 import joblib
 import json
 from kafka import KafkaProducer
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow import keras
-from datetime import datetime
+from tensorflow.keras import layers
+from datetime import datetime, timedelta
 import time
 
-# Config
-KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-POSTGRES_HOST = "db"
-POSTGRES_DB = "mscds"
-POSTGRES_USER = "postgres"
-POSTGRES_PASSWORD = "Admin123"
+def produce_traffic_data():
+    # Config
+    KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
+    POSTGRES_HOST = "db"
+    POSTGRES_DB = "mscds"
+    POSTGRES_USER = "postgres"
+    POSTGRES_PASSWORD = "Admin123"
 
-# Connect to database
-conn = psycopg2.connect(
-    host=POSTGRES_HOST,
-    database=POSTGRES_DB,
-    user=POSTGRES_USER,
-    password=POSTGRES_PASSWORD
-)
+    # Connect to DB
+    conn = psycopg2.connect(
+        host=POSTGRES_HOST,
+        database=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD
+    )
+    cursor = conn.cursor()
 
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-    value_serializer=lambda v: json.dumps(v).encode("utf-8")
-)
+    producer = KafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda v: json.dumps(v).encode("utf-8")
+    )
 
-# Loop forever every hour
-while True:
-    print("⏰ Running traffic data producer loop...")
+    print("✅ Starting LSTM-based synthetic traffic data generation...")
 
-    aqi_query = "SELECT * FROM aqi_table;"
-    weather_query = "SELECT * FROM weather_table;"
+    # Load data
+    aqi_df = pd.read_sql("SELECT * FROM aqi_table;", conn)
+    weather_df = pd.read_sql("SELECT * FROM weather_table;", conn)
+    site_df = pd.read_sql("SELECT DISTINCT latitude, longitude, site_code FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;", conn)
 
-    aqi_df = pd.read_sql(aqi_query, conn)
-    weather_df = pd.read_sql(weather_query, conn)
-
-    # Check columns
-    print("AQI columns:", aqi_df.columns.tolist())
-
-    # Convert timestamps and remove timezone
     aqi_df["measurement_datetime"] = pd.to_datetime(aqi_df["measurement_datetime"]).dt.tz_localize(None)
     weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"]).dt.tz_localize(None)
 
@@ -59,9 +55,17 @@ while True:
 
     merged_df = merged_df.dropna()
 
+    if merged_df.empty:
+        print("❌ No merged data available.")
+        return
+
+    # Features
     aqi_features = ["pm2_5", "pm10", "no2", "so2", "co", "o3"]
     weather_features = ["temp", "pressure", "humidity", "wind_speed", "clouds", "visibility"]
-    features = aqi_features + weather_features
+    location_features = ["latitude", "longitude", "measurement_timestamp"]
+    features = aqi_features + weather_features + location_features
+
+    merged_df["measurement_timestamp"] = merged_df["measurement_datetime"].apply(lambda x: x.timestamp())
 
     merged_df["score"] = (
         merged_df["no2"] * 4 +
@@ -94,66 +98,109 @@ while True:
 
     merged_df["traffic_density"] = merged_df["traffic_flow"].apply(inverse_density)
 
-    # Train model
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import LabelEncoder
-
     flow_encoder = LabelEncoder()
     merged_df["flow_label"] = flow_encoder.fit_transform(merged_df["traffic_flow"])
 
-    X = merged_df[features].fillna(0).values
-    y = merged_df["flow_label"].values
+    merged_df = merged_df.sort_values("measurement_datetime")
+
+    sequence_length = 24
+    X_sequences = []
+    y_labels = []
+
+    for i in range(sequence_length, len(merged_df)):
+        sequence = merged_df[features].iloc[i-sequence_length:i].values
+        X_sequences.append(sequence)
+        y_labels.append(merged_df["flow_label"].iloc[i])
+
+    X_sequences = np.array(X_sequences)
+    y_labels = np.array(y_labels)
 
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    flat_X = X_sequences.reshape(-1, X_sequences.shape[-1])
+    scaled_flat_X = scaler.fit_transform(flat_X)
+    X_scaled = scaled_flat_X.reshape(X_sequences.shape)
 
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-    from tensorflow.keras import layers
+    split_idx = int(0.8 * len(X_scaled))
+    X_train, X_test = X_scaled[:split_idx], X_scaled[split_idx:]
+    y_train, y_test = y_labels[:split_idx], y_labels[split_idx:]
 
     model = keras.Sequential([
-        layers.Dense(64, activation="relu", input_shape=(len(features),)),
+        layers.LSTM(64, input_shape=(sequence_length, X_scaled.shape[-1])),
         layers.Dense(32, activation="relu"),
         layers.Dense(3, activation="softmax")
     ])
 
     model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-    model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.1)
+    model.fit(X_train, y_train, epochs=5, batch_size=32, validation_split=0.1)
+
+    loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+    print(f"✅ LSTM Model - Test Loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS synthetic_lstm_stats (
+        id SERIAL PRIMARY KEY,
+        model_name TEXT,
+        test_loss DOUBLE PRECISION,
+        test_accuracy DOUBLE PRECISION,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+    conn.commit()
+
+    cursor.execute("""
+    INSERT INTO synthetic_lstm_stats (model_name, test_loss, test_accuracy)
+    VALUES (%s, %s, %s);
+    """, ("traffic_lstm_model", float(loss), float(accuracy)))
+    conn.commit()
 
     joblib.dump(scaler, "scaler.save")
     joblib.dump(flow_encoder, "flow_encoder.save")
-    model.save("traffic_flow_model.h5")
+    model.save("traffic_lstm_model.h5")
 
-    # Producer loop
-    for idx, row in merged_df.iterrows():
-        input_data = row[features].values.reshape(1, -1)
-        input_scaled = scaler.transform(input_data)
+    start_date = datetime.now() - timedelta(days=365)
+    end_date = datetime.now()
 
-        pred_probs = model.predict(input_scaled)[0]
-        pred_label = np.argmax(pred_probs)
-        flow_category = flow_encoder.inverse_transform([pred_label])[0]
+    while True:
+        for index, site in site_df.iterrows():
+            lat = site["latitude"]
+            lon = site["longitude"]
+            print(f"🚦 Generating data for site: {site['site_code']} at ({lat}, {lon})")
 
-        if flow_category == "high":
-            density_category = "low"
-        elif flow_category == "moderate":
-            density_category = "moderate"
-        else:
-            density_category = "high"
+            current_date = start_date
 
-        payload = {
-            "measurement_datetime": row["measurement_datetime"].strftime("%Y-%m-%d %H:%M:%S"),
-            "latitude": row["latitude"],
-            "longitude": row["longitude"],
-            "traffic_flow": flow_category,
-            "traffic_density": density_category
-        }
+            while current_date <= end_date:
+                for hour in range(24):
+                    dt = current_date.replace(hour=hour, minute=0, second=0, microsecond=0)
 
-        producer.send("traffic_data", payload)
-        print(f"✅ Sent: {payload}")
+                    last_seq = merged_df[features].iloc[-sequence_length:].values.copy()
+                    last_seq[-1][-3] = lat
+                    last_seq[-1][-2] = lon
+                    last_seq[-1][-1] = dt.timestamp()
 
-    producer.flush()
-    print("✅ Finished producing this batch of synthetic traffic data.")
+                    last_seq_scaled = scaler.transform(last_seq).reshape(1, sequence_length, -1)
 
-    # Wait for one hour before next run
-    print("⏰ Sleeping for 1 hour...")
-    time.sleep(3600)
+                    pred_probs = model.predict(last_seq_scaled)[0]
+                    pred_label = np.argmax(pred_probs)
+                    flow_category = flow_encoder.inverse_transform([pred_label])[0]
+                    density_category = inverse_density(flow_category)
+
+                    payload = {
+                        "measurement_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "latitude": lat,
+                        "longitude": lon,
+                        "traffic_flow": flow_category,
+                        "traffic_density": density_category
+                    }
+
+                    producer.send("traffic_data", payload)
+                    print(f"✅ Sent: {payload}")
+
+                current_date += timedelta(days=1)
+
+            producer.flush()
+        print("⏰ Sleeping for 1 hour before next full loop...")
+        time.sleep(3600)
+
+# Optional: standalone run
+if __name__ == "__main__":
+    produce_traffic_data()
