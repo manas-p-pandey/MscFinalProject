@@ -11,14 +11,12 @@ from datetime import datetime, timedelta
 import time
 
 def produce_traffic_data():
-    # Config
     KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
     POSTGRES_HOST = "db"
     POSTGRES_DB = "mscds"
     POSTGRES_USER = "postgres"
     POSTGRES_PASSWORD = "Admin123"
 
-    # Connect to DB
     conn = psycopg2.connect(
         host=POSTGRES_HOST,
         database=POSTGRES_DB,
@@ -37,7 +35,7 @@ def produce_traffic_data():
     # Load data
     aqi_df = pd.read_sql("SELECT * FROM aqi_table;", conn)
     weather_df = pd.read_sql("SELECT * FROM weather_table;", conn)
-    site_df = pd.read_sql("SELECT DISTINCT latitude, longitude, site_code FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;", conn)
+    site_df = pd.read_sql("SELECT DISTINCT latitude, longitude FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;", conn)
 
     aqi_df["measurement_datetime"] = pd.to_datetime(aqi_df["measurement_datetime"]).dt.tz_localize(None)
     weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"]).dt.tz_localize(None)
@@ -50,7 +48,7 @@ def produce_traffic_data():
         right_on="timestamp",
         by=["latitude", "longitude"],
         direction="nearest",
-        tolerance=pd.Timedelta("1h")
+        tolerance=pd.Timedelta("30m")
     )
 
     merged_df = merged_df.dropna()
@@ -136,71 +134,67 @@ def produce_traffic_data():
     loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
     print(f"✅ LSTM Model - Test Loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS synthetic_lstm_stats (
-        id SERIAL PRIMARY KEY,
-        model_name TEXT,
-        test_loss DOUBLE PRECISION,
-        test_accuracy DOUBLE PRECISION,
-        created_at TIMESTAMP DEFAULT NOW()
-    );
-    """)
-    conn.commit()
-
-    cursor.execute("""
-    INSERT INTO synthetic_lstm_stats (model_name, test_loss, test_accuracy)
-    VALUES (%s, %s, %s);
-    """, ("traffic_lstm_model", float(loss), float(accuracy)))
-    conn.commit()
-
     joblib.dump(scaler, "scaler.save")
     joblib.dump(flow_encoder, "flow_encoder.save")
-    model.save("traffic_lstm_model.h5")
+    model.save("traffic_lstm_model.keras")
 
     start_date = datetime.now() - timedelta(days=365)
     end_date = datetime.now()
 
-    while True:
-        for index, site in site_df.iterrows():
-            lat = site["latitude"]
-            lon = site["longitude"]
-            print(f"🚦 Generating data for site: {site['site_code']} at ({lat}, {lon})")
+    for index, site in site_df.iterrows():
+        lat = float(site["latitude"])
+        lon = float(site["longitude"])
 
-            current_date = start_date
+        cursor.execute("""
+            SELECT DISTINCT measurement_datetime FROM traffic_table
+            WHERE latitude = %s AND longitude = %s;
+        """, (lat, lon))
+        existing = set(row[0].replace(minute=0, second=0, microsecond=0) for row in cursor.fetchall())
 
-            while current_date <= end_date:
-                for hour in range(24):
-                    dt = current_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+        expected_hours = []
+        current = start_date.replace(minute=0, second=0, microsecond=0)
+        while current <= end_date:
+            expected_hours.append(current)
+            current += timedelta(hours=1)
 
-                    last_seq = merged_df[features].iloc[-sequence_length:].values.copy()
-                    last_seq[-1][-3] = lat
-                    last_seq[-1][-2] = lon
-                    last_seq[-1][-1] = dt.timestamp()
+        missing_hours = [dt for dt in expected_hours if dt not in existing]
+        print(f"🔍 Traffic: {lat}, {lon} - Missing: {len(missing_hours)} hours")
 
-                    last_seq_scaled = scaler.transform(last_seq).reshape(1, sequence_length, -1)
+        for dt in missing_hours:
+            # Extra explicit check before generating payload
+            cursor.execute("""
+                SELECT 1 FROM traffic_table
+                WHERE latitude = %s AND longitude = %s AND measurement_datetime = %s
+            """, (lat, lon, dt))
+            if cursor.fetchone():
+                print(f"⏭️ Skipping existing traffic record at {dt}")
+                continue
 
-                    pred_probs = model.predict(last_seq_scaled)[0]
-                    pred_label = np.argmax(pred_probs)
-                    flow_category = flow_encoder.inverse_transform([pred_label])[0]
-                    density_category = inverse_density(flow_category)
+            last_seq = merged_df[features].iloc[-sequence_length:].values.copy()
+            last_seq[-1][-3] = lat
+            last_seq[-1][-2] = lon
+            last_seq[-1][-1] = dt.timestamp()
 
-                    payload = {
-                        "measurement_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
-                        "latitude": lat,
-                        "longitude": lon,
-                        "traffic_flow": flow_category,
-                        "traffic_density": density_category
-                    }
+            last_seq_scaled = scaler.transform(last_seq).reshape(1, sequence_length, -1)
 
-                    producer.send("traffic_data", payload)
-                    print(f"✅ Sent: {payload}")
+            pred_probs = model.predict(last_seq_scaled)[0]
+            pred_label = np.argmax(pred_probs)
+            flow_category = flow_encoder.inverse_transform([pred_label])[0]
+            density_category = inverse_density(flow_category)
 
-                current_date += timedelta(days=1)
+            payload = {
+                "measurement_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "latitude": lat,
+                "longitude": lon,
+                "traffic_flow": flow_category,
+                "traffic_density": density_category
+            }
 
-            producer.flush()
-        print("⏰ Sleeping for 1 hour before next full loop...")
-        time.sleep(3600)
+            producer.send("traffic_data", payload)
+            print(f"✅ Sent: {payload}")
 
-# Optional: standalone run
+        producer.flush()
+    print("✅ Traffic data production completed.")
+
 if __name__ == "__main__":
     produce_traffic_data()

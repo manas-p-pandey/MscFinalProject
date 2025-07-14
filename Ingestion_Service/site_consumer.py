@@ -19,7 +19,7 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-# Create aqi_site_table if not exists
+# Create site_table if not exists
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS site_table (
     site_code TEXT PRIMARY KEY,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS site_table (
 );
 """)
 conn.commit()
-print("✅ aqi_site_table checked or created.")
+print("✅ site_table checked or created.")
 
 # Kafka consumer
 consumer = KafkaConsumer(
@@ -49,6 +49,19 @@ consumer = KafkaConsumer(
 )
 
 print("✅ Site consumer started.")
+
+def remove_duplicates():
+    # Delete duplicates keeping one with date_closed IS NULL
+    cursor.execute("""
+        DELETE FROM site_table st
+        USING site_table st2
+        WHERE st.site_code <> st2.site_code
+          AND st.latitude = st2.latitude
+          AND st.longitude = st2.longitude
+          AND st2.date_closed IS NULL;
+    """)
+    conn.commit()
+    print("🗑️ Removed duplicate site entries keeping active ones.")
 
 for message in consumer:
     site = message.value
@@ -87,6 +100,9 @@ for message in consumer:
         ))
         conn.commit()
         print(f"✅ Inserted/Updated site {site['site_code']}")
+
+        # Call cleanup after each insert/update
+        remove_duplicates()
 
     except Exception as e:
         print(f"❌ Error inserting site {site['site_code']}: {e}")

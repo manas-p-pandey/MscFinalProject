@@ -72,10 +72,17 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1 glass-nav">
                         <li class="nav-item">
-                            <a class="nav-link glass-btn" asp-area="" asp-controller="Home" asp-action="Index">Dashboard</a>
+                            <a class="nav-link glass-btn" asp-area="" asp-controller="Home" asp-action="Index" >Dashboard</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link glass-btn" asp-area="" asp-controller="Analytics" asp-action="Index">Analytics</a>
+                            <a class="nav-link glass-btn"
+                               asp-area=""
+                               asp-controller="Analytics"
+                               asp-action="Index"
+                               asp-route-viewId="0"
+                               asp-route-queryDatetime="@DateTime.Today.AddHours(-1).ToString("yyyy-MM-dd HH:00:00")">
+                                Analytics
+                            </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link glass-btn" asp-area="" asp-controller="Forecast" asp-action="Index">Forecast</a>

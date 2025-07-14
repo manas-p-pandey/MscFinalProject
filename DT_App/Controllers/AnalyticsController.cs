@@ -10,47 +10,49 @@ namespace DT_App.Controllers
     public class AnalyticsController : Controller
     {
         private readonly SiteClient _siteClient;
+        private readonly MLDataClient _mlDataClient;
 
-        public AnalyticsController(SiteClient siteClient)
+        public AnalyticsController(SiteClient siteClient, MLDataClient mlClient)
         {
             _siteClient = siteClient;
+            _mlDataClient = mlClient;
         }
 
-        public async Task<IActionResult> Index()
+        // default call
+        public async Task<IActionResult> Index(DateTime queryDatetime, int viewID = 0)
         {
-            var result = await SetupViewModel();
+            var result = await SetupViewModel(viewID, queryDatetime);
             return View();
         }
 
         public async Task<IActionResult> TrafficPartial()
         {
-            //var result = await SetupViewModel();
             return PartialView("_TrafficPartial");
         }
 
         public async Task<IActionResult> WeatherPartial()
         {
-            //var result = await SetupViewModel();
             return PartialView("_WeatherPartial");
         }
 
         public async Task<IActionResult> PollutionPartial()
         {
-            //var result = await SetupViewModel();
             return PartialView("_PollutionPartial");
         }
 
         public async Task<IActionResult> CombinedPartial()
         {
-            //var result = await SetupViewModel();
             return PartialView("_CombinedPartial");
         }
 
-        private async Task<bool> SetupViewModel()
+        private async Task<bool> SetupViewModel(int viewID, DateTime queryDateTime)
         {
             try
             {
                 ViewBag.SiteList = await _siteClient.GetSitesAsync();
+                ViewBag.MLDataList = await _mlDataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
+                ViewBag.ViewID = viewID;
+                ViewBag.LastQueryDate = queryDateTime;
                 return true;
             }
             catch

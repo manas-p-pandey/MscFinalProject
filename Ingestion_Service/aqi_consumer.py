@@ -41,54 +41,6 @@ CREATE TABLE IF NOT EXISTS aqi_table (
 );
 """)
 conn.commit()
-
-# Create or replace view
-cursor.execute("""
-CREATE OR REPLACE VIEW public.aqi_data_view AS
-SELECT
-    site.site_code,
-    site.site_name,
-    site.site_type,
-    site.local_authority_name,
-    site.latitude,
-    site.longitude,
-    site.date_opened,
-    site.date_closed,
-    site.site_link,
-    DATE(aqi.measurement_datetime) AS measurement_date,
-    ROUND(AVG(aqi.aqi))::INTEGER AS mean_aqi,
-    ROUND(AVG(aqi.co)::NUMERIC, 2) AS mean_co,
-    ROUND(AVG(aqi.no)::NUMERIC, 2) AS mean_no,
-    ROUND(AVG(aqi.no2)::NUMERIC, 2) AS mean_no2,
-    ROUND(AVG(aqi.o3)::NUMERIC, 2) AS mean_o3,
-    ROUND(AVG(aqi.so2)::NUMERIC, 2) AS mean_so2,
-    ROUND(AVG(aqi.pm2_5)::NUMERIC, 2) AS mean_pm2_5,
-    ROUND(AVG(aqi.pm10)::NUMERIC, 2) AS mean_pm10,
-    ROUND(AVG(aqi.nh3)::NUMERIC, 2) AS mean_nh3
-FROM
-    aqi_table aqi
-JOIN
-    site_table site
-ON
-    aqi.site_code = site.site_code
-GROUP BY
-    site.site_code,
-    site.site_name,
-    site.site_type,
-    site.local_authority_name,
-    site.latitude,
-    site.longitude,
-    site.date_opened,
-    site.date_closed,
-    site.site_link,
-    DATE(aqi.measurement_datetime)
-ORDER BY
-    measurement_date DESC;
-
-ALTER VIEW public.aqi_data_view
-    OWNER TO postgres;
-""")
-conn.commit()
 print("✅ aqi_table and aqi_data_view checked or created.")
 
 # Kafka consumer
