@@ -134,6 +134,28 @@ def produce_traffic_data():
     loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
     print(f"✅ LSTM Model - Test Loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
 
+    # write performance metrics
+
+    # Insert model performance into synthetic_lstm_stats
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS synthetic_lstm_stats (
+            id SERIAL PRIMARY KEY,
+            model_name TEXT,
+            test_loss DOUBLE PRECISION,
+            test_accuracy DOUBLE PRECISION,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    """)
+    conn.commit()
+
+    cursor.execute("""
+        INSERT INTO synthetic_lstm_stats (model_name, test_loss, test_accuracy)
+        VALUES (%s, %s, %s);
+    """, ("traffic_lstm_model", float(loss), float(accuracy)))
+    conn.commit()
+    print("📊 Inserted model performance metrics into synthetic_lstm_stats.")
+
+
     joblib.dump(scaler, "scaler.save")
     joblib.dump(flow_encoder, "flow_encoder.save")
     model.save("traffic_lstm_model.keras")
