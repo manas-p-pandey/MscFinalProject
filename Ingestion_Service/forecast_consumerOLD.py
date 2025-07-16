@@ -1,9 +1,8 @@
-# [Place the full final forecast_consumer.py code here]import json
+import json
 import os
 import psycopg2
 from sqlalchemy import create_engine, text
 from kafka import KafkaConsumer
-import json
 
 # ==========================
 # CONFIG
@@ -27,6 +26,7 @@ conn = psycopg2.connect(
     password=POSTGRES_PASSWORD
 )
 
+# ✅ Only one KafkaConsumer — fix here
 consumer = KafkaConsumer(
     KAFKA_TOPIC,
     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -37,7 +37,7 @@ consumer = KafkaConsumer(
 )
 
 # ==========================
-# Helper: Create table
+# Helper: Create table if not exists
 # ==========================
 def create_forecast_table():
     with engine.begin() as conn:
@@ -52,73 +52,25 @@ def create_forecast_table():
                 month INTEGER,
                 weekday INTEGER,
                 datetime TIMESTAMP,
-                aqi FLOAT,
-                co FLOAT,
-                no FLOAT,
-                no2 FLOAT,
-                o3 FLOAT,
-                so2 FLOAT,
-                pm2_5 FLOAT,
-                pm10 FLOAT,
-                nh3 FLOAT,
-                temp FLOAT,
-                feels_like FLOAT,
-                pressure FLOAT,
-                humidity FLOAT,
-                dew_point FLOAT,
-                clouds FLOAT,
-                wind_speed FLOAT,
-                wind_deg FLOAT,
-                traffic_flow TEXT,
-                traffic_density TEXT,
                 UNIQUE(latitude, longitude, datetime)
             )
         """))
 
 # ==========================
-# Helper: Upsert forecast
+# Helper: Upsert forecast row
 # ==========================
 def upsert_forecast_row(data):
     with engine.begin() as conn:
         query = text(f"""
-            INSERT INTO {FORECAST_TABLE} (
-                site_code, latitude, longitude, hour, day, month, weekday, datetime,
-                aqi, co, no, no2, o3, so2, pm2_5, pm10, nh3, temp, feels_like,
-                pressure, humidity, dew_point, clouds, wind_speed, wind_deg,
-                traffic_flow, traffic_density
-            )
-            VALUES (
-                :site_code, :latitude, :longitude, :hour, :day, :month, :weekday, :datetime,
-                :aqi, :co, :no, :no2, :o3, :so2, :pm2_5, :pm10, :nh3, :temp, :feels_like,
-                :pressure, :humidity, :dew_point, :clouds, :wind_speed, :wind_deg,
-                :traffic_flow, :traffic_density
-            )
+            INSERT INTO {FORECAST_TABLE} (site_code, latitude, longitude, hour, day, month, weekday, datetime)
+            VALUES (:site_code, :latitude, :longitude, :hour, :day, :month, :weekday, :datetime)
             ON CONFLICT (latitude, longitude, datetime)
             DO UPDATE SET
                 site_code = EXCLUDED.site_code,
                 hour = EXCLUDED.hour,
                 day = EXCLUDED.day,
                 month = EXCLUDED.month,
-                weekday = EXCLUDED.weekday,
-                aqi = EXCLUDED.aqi,
-                co = EXCLUDED.co,
-                no = EXCLUDED.no,
-                no2 = EXCLUDED.no2,
-                o3 = EXCLUDED.o3,
-                so2 = EXCLUDED.so2,
-                pm2_5 = EXCLUDED.pm2_5,
-                pm10 = EXCLUDED.pm10,
-                nh3 = EXCLUDED.nh3,
-                temp = EXCLUDED.temp,
-                feels_like = EXCLUDED.feels_like,
-                pressure = EXCLUDED.pressure,
-                humidity = EXCLUDED.humidity,
-                dew_point = EXCLUDED.dew_point,
-                clouds = EXCLUDED.clouds,
-                wind_speed = EXCLUDED.wind_speed,
-                wind_deg = EXCLUDED.wind_deg,
-                traffic_flow = EXCLUDED.traffic_flow,
-                traffic_density = EXCLUDED.traffic_density
+                weekday = EXCLUDED.weekday
         """)
         conn.execute(query, data)
 
