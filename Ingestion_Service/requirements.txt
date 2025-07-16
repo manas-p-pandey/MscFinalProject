@@ -7,4 +7,7 @@ pandas
 numpy
 scikit-learn
 tensorflow
+xgboost
 joblib
+sqlalchemy
+python-dateutil
