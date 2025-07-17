@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from site_producer import produce_site_data
 from aqi_producer import produce_aqi_data
@@ -24,10 +24,8 @@ def main():
     print(f"✅ All producers completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 if __name__ == "__main__":
-    last_run_hour = None
-    # first run when producer starts
-    main()
     # logic to wait and call at every hour of the day if not already running
+    print(f"⏰ Waiting to start next batch at {datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)+timedelta(days=1)}")
     while True:
         now = datetime.now()
         current_hour = now.hour
@@ -35,10 +33,10 @@ if __name__ == "__main__":
         current_second = now.second
 
         # Check if it's the start of a new hour and hasn't been run in this hour
-        if current_minute == 0 and current_second < 10 and current_hour != last_run_hour:
+        if current_minute == 0 and current_second>=0 and current_second < 10 and current_hour ==0:
             main()
             last_run_hour = current_hour
-            print("⏰ Completed run for this hour. Waiting for next hour...")
-
+            print(f"⏰ Completed run for this hour starting at {now}. Waiting for next hour...")
+            print(f"⏰ Waiting to start next batch at {now.replace(hour=0, minute=0, second=0, microsecond=0)+timedelta(days=1)}")
         # Sleep briefly to reduce CPU load
-        time.sleep(5)
+        time.sleep(1)
