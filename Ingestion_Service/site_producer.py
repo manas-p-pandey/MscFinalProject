@@ -48,4 +48,3 @@ def produce_site_data():
 # Optional: if you want this script to run standalone as well
 if __name__ == "__main__":
     produce_site_data()
-    time.sleep(3600)

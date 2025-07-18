@@ -177,21 +177,7 @@ services:
       - aqi_consumer
       - weather_consumer
       - traffic_consumer
-
-  forecast_producer:
-    container_name: forecast_producer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "forecast_producer.py"]
-    depends_on:
-      - db
-      - kafka
+      - forecast_consumer
   
   redis:
     image: redis:latest

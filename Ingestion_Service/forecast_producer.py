@@ -158,28 +158,18 @@ def send_to_kafka(forecast_df):
         producer.send(KAFKA_TOPIC, message)
     producer.flush()
 
-if __name__ == "__main__":
+def produce_forecast_data():    
     print("✅ Forecast producer started.")
-    print(f"⏰ Waiting to start next batch at {datetime.today().replace(hour=0, minute=30, second=0, microsecond=0)+timedelta(days=1)}")
-    while True:
-        now = datetime.now()
-        current_hour = now.hour
-        current_minute = now.minute
-        current_second = now.second
-
-        # Check if it's the start of a new hour and hasn't been run in this hour
-        if current_minute == 30 and current_second>=0 and current_second < 10 and current_hour ==0:
-            print(f"[{now}] Running producer workflow...")
-            try:
-                df = load_data()
-                X_scaled, df_processed, scaler, le_site = preprocess_data(df)
-                retrain_models(X_scaled, df_processed)
-                forecast_df = generate_forecast_rows(df, scaler, le_site)
-                send_to_kafka(forecast_df)
-                print(f"[{datetime.now()}] ✅ Forecast data sent to Kafka. Sleeping until next run...")
+    try:
+        df = load_data()
+        X_scaled, df_processed, scaler, le_site = preprocess_data(df)
+        retrain_models(X_scaled, df_processed)
+        forecast_df = generate_forecast_rows(df, scaler, le_site)
+        send_to_kafka(forecast_df)
+        print(f"[{datetime.now()}] ✅ Forecast data sent to Kafka. Sleeping until next run...")
                 
-            except Exception as e:
-                print(f"❌ Error during producer run: {e}")
-            print(f"⏰ Waiting to start next batch at {now.replace(hour=0, minute=30, second=0, microsecond=0)+timedelta(days=1)}")
-        else:
-            time.sleep(1)
+    except Exception as e:
+        print(f"❌ Error during producer run: {e}")
+
+if __name__ == "__main__":
+    produce_forecast_data()
