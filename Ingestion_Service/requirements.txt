@@ -11,3 +11,4 @@ xgboost
 joblib
 sqlalchemy
 python-dateutil
+redis

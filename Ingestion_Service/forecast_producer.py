@@ -14,12 +14,19 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from xgboost import XGBRegressor, XGBClassifier
 from kafka import KafkaProducer
 
+import redis
+import pickle
+
 # CONFIG
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "mscds")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Admin123")
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
 MODEL_DIR = "./forecast_model"
 KAFKA_TOPIC = "forecast_data"
@@ -78,15 +85,26 @@ def preprocess_data(df):
         joblib.dump(scaler, scaler_path)
 
     X_scaled = scaler.transform(X)
+
+    # Store each target column in Redis
+    numeric_targets = df[['aqi', 'co', 'no', 'no2', 'o3', 'so2', 'pm2_5', 'pm10', 'nh3',
+                  'temp', 'feels_like', 'pressure', 'humidity', 'dew_point',
+                  'clouds', 'wind_speed', 'wind_deg']]
+    class_targets = df[[ 'traffic_flow', 'traffic_density']]
+
+    redis_client.set("forecast:numeric_target_columns", pickle.dumps(numeric_targets.columns.tolist()))
+    redis_client.set("forecast:class_target_columns", pickle.dumps(class_targets.columns.tolist()))
+
+
     return X_scaled, df, scaler, le_site
 
-def retrain_models(X_scaled, df):
-    numeric_cols = ['aqi', 'co', 'no', 'no2', 'o3', 'so2', 'pm2_5', 'pm10', 'nh3',
-                    'temp', 'feels_like', 'pressure', 'humidity', 'dew_point',
-                    'clouds', 'wind_speed', 'wind_deg']
-    classification_cols = ['traffic_flow', 'traffic_density']
+def get_data_from_redis():
+    numeric_columns = pickle.loads(redis_client.get("forecast:numeric_target_columns"))
+    class_columns = pickle.loads(redis_client.get("forecast:class_target_columns"))
+    return numeric_columns, class_columns
 
-    for target in numeric_cols:
+def retrain_models(X_scaled, df, numeric_columns, class_columns):
+    for target in numeric_columns:
         y = df[target]
         model_path = os.path.join(MODEL_DIR, f"model_regression_{target}.json")
         model = XGBRegressor()
@@ -95,7 +113,7 @@ def retrain_models(X_scaled, df):
         model.fit(X_scaled, y)
         model.save_model(model_path)
 
-    for target in classification_cols:
+    for target in class_columns:
         y = df[target]
         model_path = os.path.join(MODEL_DIR, f"model_classification_{target}.json")
         model = XGBClassifier()
@@ -161,10 +179,17 @@ def send_to_kafka(forecast_df):
 def produce_forecast_data():    
     print("✅ Forecast producer started.")
     try:
+        print("Loading data from postgres...")
         df = load_data()
+        print("Preprocessing / Transforming data to include only required columns and applying scaler for transformation...")
         X_scaled, df_processed, scaler, le_site = preprocess_data(df)
-        retrain_models(X_scaled, df_processed)
+        print("Getting Columns from redis for integrity...")
+        numeric_columns, class_columns = get_data_from_redis()
+        print("Retraining the existing model to improve accuracy...")
+        retrain_models(X_scaled, df_processed, numeric_columns, class_columns)
+        print("Generating forecast data using retrained mode for next seven days data for location and hour...")
         forecast_df = generate_forecast_rows(df, scaler, le_site)
+        print("Sending data to Kafka topic...")
         send_to_kafka(forecast_df)
         print(f"[{datetime.now()}] ✅ Forecast data sent to Kafka. Sleeping until next run...")
                 
