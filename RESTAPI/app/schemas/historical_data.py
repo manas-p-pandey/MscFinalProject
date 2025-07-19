@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-class ML_Data(BaseModel):
+class Historical_Data(BaseModel):
     site_code : str
     site_name: str
     site_type: str

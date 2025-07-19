@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
-from app.schemas.ml_data_view import ML_Data
-from app.services.ml_data_service import historical_service
+from app.schemas.historical_data import Historical_Data
+from app.services.historical_data_view import historical_service
 from datetime import datetime
 from typing import List
 
@@ -12,7 +12,7 @@ async def get_db():
     async with SessionLocal() as session:
         yield session
 
-@router.get("/", response_model=List[ML_Data])
+@router.get("/", response_model=List[Historical_Data])
 async def read_records_by_datetime(
     datetime_value: str = Query(..., description="Datetime string in format YYYY-MM-DD HH:00:00"),
     db: AsyncSession = Depends(get_db)

@@ -10,15 +10,17 @@ namespace DT_App.Controllers
     public class ForecastController : Controller
     {
         private readonly SiteClient _siteClient;
+        private readonly DataClient _dataClient;
 
-        public ForecastController(SiteClient siteClient)
+        public ForecastController(SiteClient siteClient, DataClient dataClient)
         {
             _siteClient = siteClient;
+            _dataClient = dataClient;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(DateTime queryDatetime, int viewID = 0)
         {
-            var result = await SetupViewModel();
+            var result = await SetupViewModel(viewID, queryDatetime);
             return View();
         }
 
@@ -46,11 +48,14 @@ namespace DT_App.Controllers
             return PartialView("_CombinedPartial");
         }
 
-        private async Task<bool> SetupViewModel()
+        private async Task<bool> SetupViewModel(int viewID, DateTime queryDateTime)
         {
             try
             {
                 ViewBag.SiteList = await _siteClient.GetSitesAsync();
+                ViewBag.MLDataList = await _dataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
+                ViewBag.ViewID = viewID;
+                ViewBag.LastQueryDate = queryDateTime;
                 return true;
             }
             catch

@@ -10,7 +10,7 @@ builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSet
 // Register HttpClient and SiteClient
 builder.Services.AddHttpClient<SiteClient>();
 // Register HttpClient and MLDataClient
-builder.Services.AddHttpClient<MLDataClient>();
+builder.Services.AddHttpClient<DataClient>();
 
 // controllers
 builder.Services.AddControllersWithViews();

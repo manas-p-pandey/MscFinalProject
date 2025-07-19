@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
-from app.schemas.forecast_data_view import Forecast_Data
+from app.schemas.forecast_data import Forecast_Data
 from app.services.forecast_data_service import forecast_service
 from datetime import datetime
 from typing import List

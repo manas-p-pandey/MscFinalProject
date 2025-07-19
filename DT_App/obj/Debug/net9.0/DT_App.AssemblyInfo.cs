@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DT_App")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f4e31f5d95c6439018744d135e6a0f23b3595ac3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+05d35319f1b8a73b625657a99d45bd7600c42c0b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DT_App")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DT_App")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

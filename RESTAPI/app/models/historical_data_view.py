@@ -1,8 +1,8 @@
 from sqlalchemy import Column, String, Float, DateTime, Integer
 from app.core.database import Base
 
-class ml_data_view(Base):
-    __tablename__ = "ml_data_view"
+class historical_data_view(Base):
+    __tablename__ = "historical_data_view"
 
     site_code = Column(String, primary_key=True, index=True)
     site_name = Column(String)

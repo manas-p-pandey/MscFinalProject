@@ -1,7 +1,7 @@
 ﻿@using Newtonsoft.Json
 @{
     var sites = ViewBag.SiteList as List<DT_App.Models.SiteModel>;
-    var mlDataset = ViewBag.MLDataList as List<DT_App.Models.MLDataView>;
+    var mlDataset = ViewBag.MLDataList as List<DT_App.Models.DataView>;
     var siteJson = JsonConvert.SerializeObject(sites);
     var mlJson = JsonConvert.SerializeObject(mlDataset);
     var lastqueryDateTime = (DateTime)ViewBag.LastQueryDate;

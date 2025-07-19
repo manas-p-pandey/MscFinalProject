@@ -10,12 +10,12 @@ namespace DT_App.Controllers
     public class AnalyticsController : Controller
     {
         private readonly SiteClient _siteClient;
-        private readonly MLDataClient _mlDataClient;
+        private readonly DataClient _dataClient;
 
-        public AnalyticsController(SiteClient siteClient, MLDataClient mlClient)
+        public AnalyticsController(SiteClient siteClient, DataClient dataClient)
         {
             _siteClient = siteClient;
-            _mlDataClient = mlClient;
+            _dataClient = dataClient;
         }
 
         // default call
@@ -50,7 +50,7 @@ namespace DT_App.Controllers
             try
             {
                 ViewBag.SiteList = await _siteClient.GetSitesAsync();
-                ViewBag.MLDataList = await _mlDataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
+                ViewBag.MLDataList = await _dataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
                 ViewBag.ViewID = viewID;
                 ViewBag.LastQueryDate = queryDateTime;
                 return true;

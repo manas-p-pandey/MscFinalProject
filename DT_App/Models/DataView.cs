@@ -2,7 +2,7 @@
 
 namespace DT_App.Models
 {
-    public class MLDataView
+    public class DataView
     {
         public string site_code { set; get; }
         public string site_name { set; get; }
