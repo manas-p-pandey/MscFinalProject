@@ -10,6 +10,16 @@ from tensorflow.keras import layers
 from datetime import datetime, timedelta
 import time
 
+def inverse_density(flow):
+    mapping = {
+        "low": "high",
+        "moderate_low": "moderate_high",
+        "moderate": "moderate",
+        "moderate_high": "moderate_low",
+        "high": "low"
+    }
+    return mapping.get(flow, "moderate")
+
 def produce_traffic_data():
     KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
     POSTGRES_HOST = "db"
@@ -30,9 +40,8 @@ def produce_traffic_data():
         value_serializer=lambda v: json.dumps(v).encode("utf-8")
     )
 
-    print("✅ Starting LSTM-based synthetic traffic data generation...")
+    print("\u2705 Starting LSTM-based synthetic traffic data generation...")
 
-    # Load data
     aqi_df = pd.read_sql("SELECT * FROM aqi_table;", conn)
     weather_df = pd.read_sql("SELECT * FROM weather_table;", conn)
     site_df = pd.read_sql("SELECT DISTINCT latitude, longitude FROM site_table WHERE latitude IS NOT NULL AND longitude IS NOT NULL;", conn)
@@ -40,7 +49,6 @@ def produce_traffic_data():
     aqi_df["measurement_datetime"] = pd.to_datetime(aqi_df["measurement_datetime"]).dt.tz_localize(None)
     weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"]).dt.tz_localize(None)
 
-    # Merge
     merged_df = pd.merge_asof(
         aqi_df.sort_values("measurement_datetime"),
         weather_df.sort_values("timestamp"),
@@ -54,10 +62,9 @@ def produce_traffic_data():
     merged_df = merged_df.dropna()
 
     if merged_df.empty:
-        print("❌ No merged data available.")
+        print("\u274c No merged data available.")
         return
 
-    # Features
     aqi_features = ["pm2_5", "pm10", "no2", "so2", "co", "o3"]
     weather_features = ["temp", "pressure", "humidity", "wind_speed", "clouds", "visibility"]
     location_features = ["latitude", "longitude", "measurement_timestamp"]
@@ -65,7 +72,7 @@ def produce_traffic_data():
 
     merged_df["measurement_timestamp"] = merged_df["measurement_datetime"].apply(lambda x: x.timestamp())
 
-    merged_df["score"] = (
+    merged_df["aqi_score"] = (
         merged_df["no2"] * 4 +
         merged_df["pm2_5"] * 3 +
         merged_df["pm10"] * 2 +
@@ -73,38 +80,27 @@ def produce_traffic_data():
         merged_df["clouds"]
     )
 
-    threshold_high = merged_df["score"].quantile(0.66)
-    threshold_mod = merged_df["score"].quantile(0.33)
+    quantiles = merged_df["aqi_score"].quantile([0.2, 0.4, 0.6, 0.8]).values
 
-    def assign_flow_category(score):
-        if score >= threshold_high:
-            return "high"
-        elif score >= threshold_mod:
-            return "moderate"
-        else:
-            return "low"
+    def map_flow(aqi):
+        if aqi < quantiles[0]: return "low"
+        elif aqi < quantiles[1]: return "moderate_low"
+        elif aqi < quantiles[2]: return "moderate"
+        elif aqi < quantiles[3]: return "moderate_high"
+        else: return "high"
 
-    merged_df["traffic_flow"] = merged_df["score"].apply(assign_flow_category)
-
-    def inverse_density(flow):
-        if flow == "high":
-            return "low"
-        elif flow == "moderate":
-            return "moderate"
-        else:
-            return "high"
-
+    merged_df["traffic_flow"] = merged_df["aqi_score"].apply(map_flow)
     merged_df["traffic_density"] = merged_df["traffic_flow"].apply(inverse_density)
 
+    flow_order = ["low", "moderate_low", "moderate", "moderate_high", "high"]
     flow_encoder = LabelEncoder()
-    merged_df["flow_label"] = flow_encoder.fit_transform(merged_df["traffic_flow"])
+    flow_encoder.fit(flow_order)
+    merged_df["flow_label"] = flow_encoder.transform(merged_df["traffic_flow"])
 
     merged_df = merged_df.sort_values("measurement_datetime")
 
     sequence_length = 24
-    X_sequences = []
-    y_labels = []
-
+    X_sequences, y_labels = [], []
     for i in range(sequence_length, len(merged_df)):
         sequence = merged_df[features].iloc[i-sequence_length:i].values
         X_sequences.append(sequence)
@@ -123,20 +119,18 @@ def produce_traffic_data():
     y_train, y_test = y_labels[:split_idx], y_labels[split_idx:]
 
     model = keras.Sequential([
-        layers.LSTM(64, input_shape=(sequence_length, X_scaled.shape[-1])),
+        layers.Input(shape=(sequence_length, X_scaled.shape[-1])),
+        layers.LSTM(64),
         layers.Dense(32, activation="relu"),
-        layers.Dense(3, activation="softmax")
+        layers.Dense(5, activation="softmax")
     ])
 
     model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
     model.fit(X_train, y_train, epochs=5, batch_size=32, validation_split=0.1)
 
     loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
-    print(f"✅ LSTM Model - Test Loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
+    print(f"\u2705 LSTM Model - Test Loss: {loss:.4f}, Test Accuracy: {accuracy:.4f}")
 
-    # write performance metrics
-
-    # Insert model performance into synthetic_lstm_stats
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS synthetic_lstm_stats (
             id SERIAL PRIMARY KEY,
@@ -147,14 +141,11 @@ def produce_traffic_data():
         );
     """)
     conn.commit()
-
     cursor.execute("""
         INSERT INTO synthetic_lstm_stats (model_name, test_loss, test_accuracy)
         VALUES (%s, %s, %s);
     """, ("traffic_lstm_model", float(loss), float(accuracy)))
     conn.commit()
-    print("📊 Inserted model performance metrics into synthetic_lstm_stats.")
-
 
     joblib.dump(scaler, "scaler.save")
     joblib.dump(flow_encoder, "flow_encoder.save")
@@ -183,7 +174,6 @@ def produce_traffic_data():
         print(f"🔍 Traffic: {lat}, {lon} - Missing: {len(missing_hours)} hours")
 
         for dt in missing_hours:
-            # Extra explicit check before generating payload
             cursor.execute("""
                 SELECT 1 FROM traffic_table
                 WHERE latitude = %s AND longitude = %s AND measurement_datetime = %s
@@ -216,7 +206,7 @@ def produce_traffic_data():
             print(f"✅ Sent: {payload}")
 
         producer.flush()
-    print("✅ Traffic data production completed.")
+    print("\u2705 Traffic data production completed.")
 
 if __name__ == "__main__":
     produce_traffic_data()

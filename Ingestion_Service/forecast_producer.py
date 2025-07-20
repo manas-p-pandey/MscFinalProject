@@ -1,4 +1,3 @@
-# [Place the full final forecast_producer.py code here]import pandas as pd
 import numpy as np
 import joblib
 import time
@@ -10,10 +9,7 @@ import pandas as pd
 
 from sqlalchemy import create_engine
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from xgboost import XGBRegressor, XGBClassifier
 from kafka import KafkaProducer
-
 import redis
 import pickle
 
@@ -46,14 +42,9 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-traffic_map_rev = {0: "low", 1: "moderate", 2: "high"}
-
 def load_data():
     query = """
-    SELECT site_code, site_name, site_type, latitude, longitude, datetime, day_of_week, 
-    aqi, co, no, no2, o3, so2, pm2_5, pm10, nh3, temp, feels_like, pressure, humidity, 
-    dew_point, clouds, wind_speed, wind_deg, weather_main, weather_description, 
-    traffic_flow, traffic_density
+    SELECT site_code, latitude, longitude, datetime, traffic_flow, traffic_density
     FROM public.historical_data_view
     ORDER BY datetime, site_code;
     """
@@ -62,8 +53,9 @@ def load_data():
     return df
 
 def preprocess_data(df):
-    df['traffic_flow'] = df['traffic_flow'].str.strip().str.lower().map({'low': 0, 'moderate': 1, 'high': 2})
-    df['traffic_density'] = df['traffic_density'].str.strip().str.lower().map({'low': 0, 'moderate': 1, 'high': 2})
+    flow_mapping = {"low": 0, "moderate_low": 1, "moderate": 2, "moderate_high": 3, "high": 4}
+    df['traffic_flow'] = df['traffic_flow'].str.strip().str.lower().map(flow_mapping)
+    df['traffic_density'] = df['traffic_density'].str.strip().str.lower().map(flow_mapping)
 
     le_site = LabelEncoder()
     df['site_code_enc'] = le_site.fit_transform(df['site_code'])
@@ -73,7 +65,7 @@ def preprocess_data(df):
     df['month'] = df['datetime'].dt.month
     df['weekday'] = df['datetime'].dt.weekday
 
-    feature_cols = ['site_code_enc', 'latitude', 'longitude', 'hour', 'day', 'month', 'weekday']
+    feature_cols = ['site_code_enc', 'latitude', 'longitude', 'hour', 'day', 'month', 'weekday', 'traffic_flow', 'traffic_density']
     X = df[feature_cols]
 
     scaler_path = os.path.join(MODEL_DIR, "scaler.joblib")
@@ -86,41 +78,15 @@ def preprocess_data(df):
 
     X_scaled = scaler.transform(X)
 
-    # Store each target column in Redis
-    numeric_targets = df[['aqi', 'co', 'no', 'no2', 'o3', 'so2', 'pm2_5', 'pm10', 'nh3',
-                  'temp', 'feels_like', 'pressure', 'humidity', 'dew_point',
-                  'clouds', 'wind_speed', 'wind_deg']]
-    class_targets = df[[ 'traffic_flow', 'traffic_density']]
-
-    redis_client.set("forecast:numeric_target_columns", pickle.dumps(numeric_targets.columns.tolist()))
-    redis_client.set("forecast:class_target_columns", pickle.dumps(class_targets.columns.tolist()))
-
+    y = df['aqi']
+    redis_client.set("forecast:feature_columns", pickle.dumps(feature_cols))
 
     return X_scaled, df, scaler, le_site
 
-def get_data_from_redis():
-    numeric_columns = pickle.loads(redis_client.get("forecast:numeric_target_columns"))
-    class_columns = pickle.loads(redis_client.get("forecast:class_target_columns"))
-    return numeric_columns, class_columns
-
-def retrain_models(X_scaled, df, numeric_columns, class_columns):
-    for target in numeric_columns:
-        y = df[target]
-        model_path = os.path.join(MODEL_DIR, f"model_regression_{target}.json")
-        model = XGBRegressor()
-        if os.path.exists(model_path):
-            model.load_model(model_path)
-        model.fit(X_scaled, y)
-        model.save_model(model_path)
-
-    for target in class_columns:
-        y = df[target]
-        model_path = os.path.join(MODEL_DIR, f"model_classification_{target}.json")
-        model = XGBClassifier()
-        if os.path.exists(model_path):
-            model.load_model(model_path)
-        model.fit(X_scaled, y)
-        model.save_model(model_path)
+def load_model():
+    model_path = os.path.join(MODEL_DIR, "model_regression_aqi.pkl")
+    model = joblib.load(model_path)
+    return model
 
 def generate_forecast_rows(df, scaler, le_site):
     predictor_cols = ['site_code', 'latitude', 'longitude']
@@ -140,31 +106,21 @@ def generate_forecast_rows(df, scaler, le_site):
                 'hour': future_dt.hour,
                 'day': future_dt.day,
                 'month': future_dt.month,
-                'weekday': future_dt.weekday()
+                'weekday': future_dt.weekday,
+                'traffic_flow': 2,  # default moderate
+                'traffic_density': 2  # default moderate
             }
             combined.append(row_dict)
 
     forecast_df = pd.DataFrame(combined)
     forecast_df['site_code_enc'] = le_site.transform(forecast_df['site_code'])
 
-    feature_cols = ['site_code_enc', 'latitude', 'longitude', 'hour', 'day', 'month', 'weekday']
+    feature_cols = pickle.loads(redis_client.get("forecast:feature_columns"))
     X_forecast = forecast_df[feature_cols]
     X_scaled = scaler.transform(X_forecast)
 
-    for target in [
-        'aqi', 'co', 'no', 'no2', 'o3', 'so2', 'pm2_5', 'pm10', 'nh3',
-        'temp', 'feels_like', 'pressure', 'humidity', 'dew_point',
-        'clouds', 'wind_speed', 'wind_deg'
-    ]:
-        model = XGBRegressor()
-        model.load_model(os.path.join(MODEL_DIR, f"model_regression_{target}.json"))
-        forecast_df[target] = model.predict(X_scaled)
-
-    for target in ['traffic_flow', 'traffic_density']:
-        model = XGBClassifier()
-        model.load_model(os.path.join(MODEL_DIR, f"model_classification_{target}.json"))
-        preds = model.predict(X_scaled)
-        forecast_df[target] = [traffic_map_rev.get(int(p), "unknown") for p in preds]
+    model = load_model()
+    forecast_df['aqi'] = model.predict(X_scaled)
 
     return forecast_df
 
@@ -176,25 +132,21 @@ def send_to_kafka(forecast_df):
         producer.send(KAFKA_TOPIC, message)
     producer.flush()
 
-def produce_forecast_data():    
-    print("✅ Forecast producer started.")
+def produce_forecast_data():
+    print("\u2705 Forecast producer started.")
     try:
         print("Loading data from postgres...")
         df = load_data()
-        print("Preprocessing / Transforming data to include only required columns and applying scaler for transformation...")
+        print("Preprocessing and scaling...")
         X_scaled, df_processed, scaler, le_site = preprocess_data(df)
-        print("Getting Columns from redis for integrity...")
-        numeric_columns, class_columns = get_data_from_redis()
-        print("Retraining the existing model to improve accuracy...")
-        retrain_models(X_scaled, df_processed, numeric_columns, class_columns)
-        print("Generating forecast data using retrained mode for next seven days data for location and hour...")
+        print("Generating forecast data...")
         forecast_df = generate_forecast_rows(df, scaler, le_site)
-        print("Sending data to Kafka topic...")
+        print("Sending forecast to Kafka...")
         send_to_kafka(forecast_df)
-        print(f"[{datetime.now()}] ✅ Forecast data sent to Kafka. Sleeping until next run...")
-                
+        print(f"[{datetime.now()}] \u2705 Forecast data sent.")
+
     except Exception as e:
-        print(f"❌ Error during producer run: {e}")
+        print(f"\u274c Error: {e}")
 
 if __name__ == "__main__":
     produce_forecast_data()
