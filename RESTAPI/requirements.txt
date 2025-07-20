@@ -11,3 +11,11 @@ python-dotenv
 kafka-python 
 psycopg2-binary 
 requests
+python-multipart
+geopy
+pandas
+numpy
+scikit-learn
+xgboost
+joblib
+python-dateutil

@@ -1,0 +1,15 @@
+# Exclude virtual environments
+.venv/
+venv/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Misc
+*.log
+.DS_Store
+.env
+.vscode/

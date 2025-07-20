@@ -170,6 +170,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - OPENWEATHER_API_KEY=0fb0f50c2badb10762006b6384c5b5da
+      - REST_HOST=api
+      - REST_PORT=8000
       - PYTHONUNBUFFERED=1
     command: ["python", "-u", "main_producer.py"]
     depends_on:
