@@ -54,7 +54,7 @@ def load_data():
     aqi, co, no, no2, o3, so2, pm2_5, pm10, nh3, temp, feels_like, pressure, humidity, 
     dew_point, clouds, wind_speed, wind_deg, weather_main, weather_description, 
     traffic_flow, traffic_density
-    FROM public.ml_data_view
+    FROM public.historical_data_view
     ORDER BY datetime, site_code;
     """
     df = pd.read_sql(query, con=engine)
