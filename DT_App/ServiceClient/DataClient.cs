@@ -46,9 +46,9 @@ namespace DT_App.ServiceClient
                 {
                     return new APIResponseModel
                     {
-                        StatusCode = "404",
-                        StatusMessage = "No Data Found",
-                        RecordCount = 0,
+                        StatusCode = "201",
+                        StatusMessage = "Data Found",
+                        RecordCount = historicalData.Count,
                         Data = historicalData
                     };
                 }

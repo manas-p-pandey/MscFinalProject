@@ -6,6 +6,7 @@ from app.api.routes import site
 from app.api.routes import historical_data
 from app.api.routes import forecast_data
 from app.api.routes import model_upload_api
+from app.api.routes import dashboard_data
 from app.core.database import sync_engine, Base
 
 app = FastAPI(title=settings.APP_NAME)
@@ -19,4 +20,5 @@ def create_tables():
 app.include_router(site.router, prefix="/sites", tags=["Sites"])
 app.include_router(historical_data.router, prefix="/historical_data", tags=["HistoricalData"])
 app.include_router(forecast_data.router, prefix="/forecast_data", tags=["ForecastData"])
+app.include_router(dashboard_data.router, prefix="/dashboard", tags=["DashboardData"])
 app.include_router(model_upload_api.router, prefix="/models", tags=["Model Upload"])

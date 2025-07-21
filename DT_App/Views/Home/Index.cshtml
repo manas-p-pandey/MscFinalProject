@@ -1,6 +1,9 @@
-﻿@{
+﻿@using Newtonsoft.Json
+
+@{
     ViewData["Title"] = "Dashboard";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var dashboardDataJson = (string)ViewBag.DashboardDataJson;
 }
 
 <style>
@@ -34,46 +37,171 @@
 
     .main-container {
         display: flex;
-        height: 80vh;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        padding: 10px;
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
         width: 100%;
     }
 
-    .test-container {
-        width: 30%;
-        background-color: #eee;
-        padding: 20px;
-        overflow-y: auto;
-    }
-
-    .content {
-        width: 70%;
-        position: relative;
-    }
-
-    #contentContainer {
-        width: 100%;
-        height: 100%;
-    }
-
-    #cesiumContainer {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
+    canvas {
+        width: 100% !important;
+        height: 300px !important;
+        border: 1px solid #ccc;
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+        border-radius: 6px;
     }
 </style>
 
 <div class="top-bar">
     <h2>@ViewData["Title"]</h2>
     <div class="menu-buttons">
-        
+        <!-- Add buttons here if needed -->
     </div>
 </div>
 
 <div class="main-container">
-    <div class="content" id="contentContainer">
-        <img src="./images/sample.avif" alt="sample" />
-    </div>
+    <canvas id="lstmChart"></canvas>
+    <div class="chart-grid" id="regressorCharts"></div>
 </div>
 
+@section Scripts {
+    
+    <script>
+        const importantModels = ["nh3", "so2", "pm10", "no2", "co", "aqi", "o3", "no", "pm2_5"];
+
+        const dashboardData = @Html.Raw(ViewBag.DashboardDataJson);
+
+        function drawLstmChart(stats) {
+            if (!stats || !Array.isArray(stats)) return;
+            const ctx = document.getElementById('lstmChart').getContext('2d');
+            const data = stats.map(stat => ({ x: new Date(stat.Created_at), y: stat.Test_Accuracy }));
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'LSTM Accuracy Over Time',
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'LSTM Accuracy Over Time',
+                            font: { size: 20, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'day' },
+                            title: {
+                                display: true,
+                                text: 'Date',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: { font: { size: 12, weight: 'bold' } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Accuracy',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: { font: { size: 12, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function drawRegressorCharts(stats) {
+            if (!stats || !Array.isArray(stats)) return;
+            const container = document.getElementById("regressorCharts");
+            importantModels.forEach(model => {
+                const filtered = stats.filter(s => s.Model === model);
+                const canvas = document.createElement("canvas");
+                container.appendChild(canvas);
+
+                new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: filtered.map(d => new Date(d.Created_At)),
+                        datasets: [
+                            {
+                                label: `R²`,
+                                data: filtered.map(d => d.R2),
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                fill: false
+                            },
+                            {
+                                label: `RMSE`,
+                                data: filtered.map(d => d.Rmse),
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                fill: false
+                            },
+                            {
+                                label: `MAE`,
+                                data: filtered.map(d => d.Mae),
+                                borderColor: 'rgba(255, 206, 86, 1)',
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Performance Over Time - ${model}`,
+                                font: { size: 20, weight: 'bold' }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { unit: 'day' },
+                                title: {
+                                    display: true,
+                                    text: 'Date',
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                ticks: { font: { size: 12, weight: 'bold' } }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Metric',
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                ticks: { font: { size: 12, weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        function renderAllCharts() {
+            drawLstmChart(dashboardData?.Lstm_Stats);
+            drawRegressorCharts(dashboardData?.Regressor_Stats);
+        }
+
+        renderAllCharts();
+    </script>
+}

@@ -5,7 +5,7 @@ python-dotenv
 geopy
 pandas
 numpy
-scikit-learn
+scikit-learn==1.4.2
 tensorflow
 xgboost
 joblib

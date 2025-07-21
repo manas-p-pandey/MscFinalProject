@@ -92,13 +92,16 @@ def retrain_models(X_scaled, y):
     os.makedirs(MODEL_DIR, exist_ok=True)
     cursor = conn.cursor()
 
+    scaler_path = os.path.join(MODEL_DIR, "scaler.joblib")
+    upload_model_to_api(scaler_path)
+
     for col in y.columns:
         model = XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
         model.fit(X_scaled, y[col])
 
         y_pred = model.predict(X_scaled)
 
-        rmse = mean_squared_error(y[col], y_pred, squared=False)
+        rmse = mean_squared_error(y[col], y_pred) ** 0.5
         mae = mean_absolute_error(y[col], y_pred)
         r2 = r2_score(y[col], y_pred)
 
@@ -114,7 +117,16 @@ def retrain_models(X_scaled, y):
             INSERT INTO public.regressor_stats (model, rmse, mae, r2, created_at)
             VALUES (%s, %s, %s, %s, %s);
         """
-        cursor.execute(insert_query, (col, rmse, mae, r2, datetime.now()))
+        cursor.execute(
+            insert_query,
+            (
+                col,
+                float(rmse),  # 🔄 np.float64 → float
+                float(mae),
+                float(r2),
+                datetime.now()
+            )
+        )
 
         # Upload model to API
         upload_model_to_api(model_path)

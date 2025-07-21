@@ -35,21 +35,46 @@ print("✅ synthetic_traffic_data table checked or created.")
 
 # Create or replace daily aggregation view
 cursor.execute("""
-CREATE OR REPLACE VIEW public.traffic_data_view AS
-SELECT
-    DATE(t.measurement_datetime) AS day,
-    t.latitude,
-    t.longitude,
-    s.site_code,
+CREATE OR REPLACE VIEW public.historical_data_view
+ AS
+ SELECT DISTINCT ON (s.site_code, s.latitude, s.longitude, a.measurement_datetime) s.site_code,
     s.site_name,
     s.site_type,
-    mode() WITHIN GROUP (ORDER BY t.traffic_flow) AS daily_traffic_flow,
-    mode() WITHIN GROUP (ORDER BY t.traffic_density) AS daily_traffic_density
-FROM traffic_table t
-LEFT JOIN site_table s
-ON t.latitude = s.latitude AND t.longitude = s.longitude
-GROUP BY day, t.latitude, t.longitude, s.site_code, s.site_name, s.site_type
-ORDER BY day DESC;
+    s.latitude,
+    s.longitude,
+    a.measurement_datetime AS datetime,
+    EXTRACT(isodow FROM a.measurement_datetime)::integer AS day_of_week,
+    a.aqi,
+    a.co,
+    a.no,
+    a.no2,
+    a.o3,
+    a.so2,
+    a.pm2_5,
+    a.pm10,
+    a.nh3,
+    w.temp,
+    w.feels_like,
+    w.pressure,
+    w.humidity,
+    w.dew_point,
+    w.uvi,
+    w.clouds,
+    w.visibility,
+    w.wind_speed,
+    w.wind_deg,
+    w.weather_main,
+    w.weather_description,
+    t.traffic_flow,
+    t.traffic_density
+   FROM aqi_table a
+     JOIN weather_table w ON a.measurement_datetime = w."timestamp" AND a.latitude = w.latitude AND a.longitude = w.longitude
+     JOIN traffic_table t ON a.measurement_datetime = t.measurement_datetime AND a.latitude = t.latitude AND a.longitude = t.longitude
+     JOIN site_table s ON a.latitude = s.latitude AND a.longitude = s.longitude
+  ORDER BY s.site_code, s.latitude, s.longitude, a.measurement_datetime, a.id DESC, w.id DESC, t.id DESC;
+
+ALTER TABLE public.historical_data_view
+    OWNER TO postgres;
 """)
 conn.commit()
 print("✅ View synthetic_traffic_daily_view created or replaced.")
