@@ -45,7 +45,7 @@
 
     .chart-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(1, 1fr);
         gap: 20px;
         width: 100%;
     }
@@ -68,21 +68,31 @@
 
 <div class="main-container">
     <canvas id="lstmChart"></canvas>
+    <div style="margin: 20px 0;">
+        <label for="modelSelect"><strong>Select XGBoost Regressor Target:</strong></label>
+        <select id="modelSelect" onchange="onModelChange()">
+            <option value="">-- Select a Target --</option>
+            @foreach (var modelName in new[] { "nh3", "so2", "pm10", "no2", "co", "aqi", "o3", "no", "pm2_5" })
+            {
+                <option value="@modelName">@modelName.ToUpper()</option>
+            }
+        </select>
+    </div>
     <div class="chart-grid" id="regressorCharts"></div>
 </div>
 
 @section Scripts {
     
     <script>
-        const importantModels = ["nh3", "so2", "pm10", "no2", "co", "aqi", "o3", "no", "pm2_5"];
-
         const dashboardData = @Html.Raw(ViewBag.DashboardDataJson);
-
+        const importantModels = ["nh3", "so2", "pm10", "no2", "co", "aqi", "o3", "no", "pm2_5"];
+        let currentRegressorChart = null;
+    
         function drawLstmChart(stats) {
             if (!stats || !Array.isArray(stats)) return;
             const ctx = document.getElementById('lstmChart').getContext('2d');
             const data = stats.map(stat => ({ x: new Date(stat.Created_at), y: stat.Test_Accuracy }));
-
+    
             new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -127,81 +137,93 @@
                 }
             });
         }
-
-        function drawRegressorCharts(stats) {
-            if (!stats || !Array.isArray(stats)) return;
+    
+        function drawSingleRegressorChart(modelName, stats) {
             const container = document.getElementById("regressorCharts");
-            importantModels.forEach(model => {
-                const filtered = stats.filter(s => s.Model === model);
-                const canvas = document.createElement("canvas");
-                container.appendChild(canvas);
-
-                new Chart(canvas.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: filtered.map(d => new Date(d.Created_At)),
-                        datasets: [
-                            {
-                                label: `R²`,
-                                data: filtered.map(d => d.R2),
-                                borderColor: 'rgba(255, 99, 132, 1)',
-                                fill: false
-                            },
-                            {
-                                label: `RMSE`,
-                                data: filtered.map(d => d.Rmse),
-                                borderColor: 'rgba(54, 162, 235, 1)',
-                                fill: false
-                            },
-                            {
-                                label: `MAE`,
-                                data: filtered.map(d => d.Mae),
-                                borderColor: 'rgba(255, 206, 86, 1)',
-                                fill: false
-                            }
-                        ]
+            container.innerHTML = '';  // Clear previous chart
+    
+            if (!modelName || !stats || !Array.isArray(stats)) return;
+    
+            const filtered = stats.filter(s => s.Model === modelName);
+            if (filtered.length === 0) return;
+    
+            const canvas = document.createElement("canvas");
+            container.appendChild(canvas);
+    
+            const ctx = canvas.getContext('2d');
+    
+            if (currentRegressorChart) currentRegressorChart.destroy();
+    
+            currentRegressorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: filtered.map(d => new Date(d.Created_At)),
+                    datasets: [
+                        {
+                            label: `R²`,
+                            data: filtered.map(d => d.R2),
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            fill: false
+                        },
+                        {
+                            label: `RMSE`,
+                            data: filtered.map(d => d.Rmse),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            fill: false
+                        },
+                        {
+                            label: `MAE`,
+                            data: filtered.map(d => d.Mae),
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Performance Over Time - ${modelName}`,
+                            font: { size: 20, weight: 'bold' }
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'day' },
                             title: {
                                 display: true,
-                                text: `Performance Over Time - ${model}`,
-                                font: { size: 20, weight: 'bold' }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: { unit: 'day' },
-                                title: {
-                                    display: true,
-                                    text: 'Date',
-                                    font: { size: 14, weight: 'bold' }
-                                },
-                                ticks: { font: { size: 12, weight: 'bold' } }
+                                text: 'Date',
+                                font: { size: 14, weight: 'bold' }
                             },
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Metric',
-                                    font: { size: 14, weight: 'bold' }
-                                },
-                                ticks: { font: { size: 12, weight: 'bold' } }
-                            }
+                            ticks: { font: { size: 12, weight: 'bold' } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Metric',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: { font: { size: 12, weight: 'bold' } }
                         }
                     }
-                });
+                }
             });
         }
-
+    
+        function onModelChange() {
+            const selected = document.getElementById("modelSelect").value;
+            drawSingleRegressorChart(selected, dashboardData?.Regressor_Stats);
+        }
+    
         function renderAllCharts() {
             drawLstmChart(dashboardData?.Lstm_Stats);
-            drawRegressorCharts(dashboardData?.Regressor_Stats);
         }
-
+    
         renderAllCharts();
     </script>
+
 }
