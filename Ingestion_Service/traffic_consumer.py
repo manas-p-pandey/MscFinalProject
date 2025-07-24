@@ -87,25 +87,28 @@ consumer = KafkaConsumer(
     auto_offset_reset="earliest",
 )
 
-print("✅ Consumer started, waiting for messages...")
+def run():
+    print("✅ Consumer started, waiting for messages...")
 
-for message in consumer:
-    data = message.value
-
-    cursor.execute("""
-        INSERT INTO traffic_table (
+    for message in consumer:
+        data = message.value
+        try:
+            cursor.execute("""
+            INSERT INTO traffic_table (
             measurement_datetime, latitude, longitude,
             traffic_flow, traffic_density
-        ) VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (measurement_datetime, latitude, longitude) DO NOTHING;
-    """, (
-        data["measurement_datetime"],
-        data["latitude"],
-        data["longitude"],
-        data["traffic_flow"],
-        data["traffic_density"]
-    ))
-    conn.commit()
-    print(f"✅ Inserted (or skipped duplicate): datetime={data['measurement_datetime']}, flow={data['traffic_flow']}, density={data['traffic_density']}")
+            ) VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (measurement_datetime, latitude, longitude) DO NOTHING;
+            """, (
+            data["measurement_datetime"],
+            data["latitude"],
+            data["longitude"],
+            data["traffic_flow"],
+            data["traffic_density"]
+            ))
+            conn.commit()
+            print(f"✅ Inserted (or skipped duplicate): datetime={data['measurement_datetime']}, flow={data['traffic_flow']}, density={data['traffic_density']}")
 
-
+        except Exception as e:
+            print(f"❌ Error inserting synthetic traffic data: {e}")
+            conn.rollback()

@@ -28,7 +28,7 @@ REST_PORT = os.getenv("REST_PORT","8000")
 
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
-MODEL_DIR = "./forecast_model"
+MODEL_DIR = "./models"
 POSTGRES_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:5432/{POSTGRES_DB}"
 engine = create_engine(POSTGRES_URI)
 

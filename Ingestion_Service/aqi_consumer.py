@@ -53,29 +53,30 @@ consumer = KafkaConsumer(
     group_id='aqi_group'
 )
 
-print("✅ AQI consumer started.")
+def run():
+    print("✅ AQI consumer started.")
 
-for message in consumer:
-    payload = message.value
-    site_code = payload.get("site_code")
-    lat = payload.get("latitude")
-    lon = payload.get("longitude")
-    data_records = payload.get("data", [])
+    for message in consumer:
+        payload = message.value
+        site_code = payload.get("site_code")
+        lat = payload.get("latitude")
+        lon = payload.get("longitude")
+        data_records = payload.get("data", [])
 
-    for rec in data_records:
-        try:
-            measurement_dt = rec.get("measurement_datetime")
-            components = rec.get("components", {})
+        for rec in data_records:
+            try:
+                measurement_dt = rec.get("measurement_datetime")
+                components = rec.get("components", {})
 
-            aqi_value = rec.get("aqi")
+                aqi_value = rec.get("aqi")
 
-            cursor.execute("""
+                cursor.execute("""
                 INSERT INTO aqi_table (
                     site_code, latitude, longitude, measurement_datetime,
                     aqi, co, no, no2, o3, so2, pm2_5, pm10, nh3
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (site_code, measurement_datetime) DO NOTHING;
-            """, (
+                """, (
                 site_code, lat, lon, measurement_dt,
                 aqi_value,
                 components.get("co"),
@@ -86,10 +87,10 @@ for message in consumer:
                 components.get("pm2_5"),
                 components.get("pm10"),
                 components.get("nh3")
-            ))
-            conn.commit()
-            print(f"✅ Inserted AQI record for {site_code} at {measurement_dt}")
+                ))
+                conn.commit()
+                print(f"✅ Inserted AQI record for {site_code} at {measurement_dt}")
 
-        except Exception as e:
-            print(f"❌ Error inserting AQI data for {site_code} at {measurement_dt}: {e}")
-            conn.rollback()
+            except Exception as e:
+                print(f"❌ Error inserting AQI data for {site_code} at {measurement_dt}: {e}")
+                conn.rollback()

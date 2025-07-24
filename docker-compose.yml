@@ -83,8 +83,8 @@ services:
     depends_on:
       - kafka
 
-  site_consumer:
-    container_name: site_consumer
+  main_consumer:
+    container_name: all_data_consumer
     build: ./ingestion_service
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -93,67 +93,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=Admin123
       - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "site_consumer.py"]
-    depends_on:
-      - kafka
-      - db
-
-  aqi_consumer:
-    container_name: aqi_consumer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "aqi_consumer.py"]
-    depends_on:
-      - kafka
-      - db
-
-  weather_consumer:
-    container_name: weather_consumer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "weather_consumer.py"]
-    depends_on:
-      - kafka
-      - db
-
-  traffic_consumer:
-    container_name: traffic_consumer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "traffic_consumer.py"]
-    depends_on:
-      - kafka
-      - db
-  
-  forecast_consumer:
-    container_name: forecast_consumer
-    build: ./ingestion_service
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_HOST=db
-      - POSTGRES_DB=mscds
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Admin123
-      - PYTHONUNBUFFERED=1
-    command: ["python", "-u", "forecast_consumer.py"]
+    command: ["python", "-u", "main_consumer.py"]
     depends_on:
       - kafka
       - db
@@ -178,11 +118,7 @@ services:
       - db
       - kafka
       - redis
-      - site_consumer
-      - aqi_consumer
-      - weather_consumer
-      - traffic_consumer
-      - forecast_consumer
+      - main_consumer
   
   redis:
     image: redis:latest

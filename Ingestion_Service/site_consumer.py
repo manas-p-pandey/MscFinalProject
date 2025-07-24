@@ -48,7 +48,6 @@ consumer = KafkaConsumer(
     group_id='site_group'
 )
 
-print("✅ Site consumer started.")
 
 def remove_duplicates():
     # Delete duplicates keeping one with date_closed IS NULL
@@ -63,11 +62,14 @@ def remove_duplicates():
     conn.commit()
     print("🗑️ Removed duplicate site entries keeping active ones.")
 
-for message in consumer:
-    site = message.value
+def run():
+    print("✅ Site consumer started.")
 
-    try:
-        cursor.execute("""
+    for message in consumer:
+        site = message.value
+
+        try:
+            cursor.execute("""
             INSERT INTO site_table (
                 site_code, site_name, site_type, local_authority_name,
                 latitude, longitude, latitudeWGS84, longitudeWGS84,
@@ -85,7 +87,7 @@ for message in consumer:
                 date_opened = EXCLUDED.date_opened,
                 date_closed = EXCLUDED.date_closed,
                 site_link = EXCLUDED.site_link;
-        """, (
+            """, (
             site["site_code"],
             site["site_name"],
             site["site_type"],
@@ -97,13 +99,13 @@ for message in consumer:
             site["date_opened"],
             site["date_closed"],
             site["site_link"]
-        ))
-        conn.commit()
-        print(f"✅ Inserted/Updated site {site['site_code']}")
+            ))
+            conn.commit()
+            print(f"✅ Inserted/Updated site {site['site_code']}")
 
-        # Call cleanup after each insert/update
-        remove_duplicates()
+            # Call cleanup after each insert/update
+            remove_duplicates()
 
-    except Exception as e:
-        print(f"❌ Error inserting site {site['site_code']}: {e}")
-        conn.rollback()
+        except Exception as e:
+            print(f"❌ Error inserting site {site['site_code']}: {e}")
+            conn.rollback()

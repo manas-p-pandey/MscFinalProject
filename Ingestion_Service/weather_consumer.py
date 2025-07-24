@@ -58,34 +58,35 @@ weather_consumer = KafkaConsumer(
     group_id='weather_group'
 )
 
-print("✅ Weather consumer started.")
+def run():
+    print("✅ Weather consumer started.")
 
-for message in weather_consumer:
-    payload = message.value
-    lat = payload.get("latitude")
-    lon = payload.get("longitude")
-    rec = payload.get("record", {})
+    for message in weather_consumer:
+        payload = message.value
+        lat = payload.get("latitude")
+        lon = payload.get("longitude")
+        rec = payload.get("record", {})
 
-    try:
-        # Convert epoch to local datetime
-        dt_epoch = rec.get("dt")
-        if dt_epoch:
-            dt_utc = datetime.utcfromtimestamp(dt_epoch)
-            dt_local = dt_utc.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/London"))
-        else:
-            dt_local = None
+        try:
+            # Convert epoch to local datetime
+            dt_epoch = rec.get("dt")
+            if dt_epoch:
+                dt_utc = datetime.utcfromtimestamp(dt_epoch)
+                dt_local = dt_utc.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/London"))
+            else:
+                dt_local = None
 
-        weather_main = rec.get("weather", [{}])[0].get("main") if rec.get("weather") else None
-        weather_desc = rec.get("weather", [{}])[0].get("description") if rec.get("weather") else None
+            weather_main = rec.get("weather", [{}])[0].get("main") if rec.get("weather") else None
+            weather_desc = rec.get("weather", [{}])[0].get("description") if rec.get("weather") else None
 
-        cursor.execute("""
+            cursor.execute("""
             INSERT INTO weather_table (
                 latitude, longitude, timestamp, temp, feels_like, pressure, humidity, dew_point,
                 uvi, clouds, visibility, wind_speed, wind_deg, weather_main, weather_description
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (latitude, longitude, timestamp) DO NOTHING;
-        """, (
+            """, (
             lat,
             lon,
             dt_local,
@@ -101,10 +102,10 @@ for message in weather_consumer:
             rec.get("wind_deg"),
             weather_main,
             weather_desc
-        ))
-        conn.commit()
-        print(f"✅ Inserted weather record for ({lat}, {lon}) at {dt_local}")
+            ))
+            conn.commit()
+            print(f"✅ Inserted weather record for ({lat}, {lon}) at {dt_local}")
 
-    except Exception as e:
-        print(f"❌ Error inserting weather data for ({lat}, {lon}): {e}")
-        conn.rollback()
+        except Exception as e:
+            print(f"❌ Error inserting weather data for ({lat}, {lon}): {e}")
+            conn.rollback()
