@@ -13,16 +13,16 @@ def main():
 
     # Call site producer
     produce_site_data()
-    time.sleep(10)
+    time.sleep(5)
     # Call AQI producer
     produce_aqi_data()
-    time.sleep(10)
+    time.sleep(5)
     # Call weather producer
     produce_weather_data()
-    time.sleep(10)
+    time.sleep(5)
     # Call traffic producer
     produce_traffic_data()
-    time.sleep(10)
+    time.sleep(5)
     # Call forecast producer
     produce_forecast_data()
 
