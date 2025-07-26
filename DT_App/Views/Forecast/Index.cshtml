@@ -1,7 +1,11 @@
 ﻿@using Newtonsoft.Json
 @{
     var sites = ViewBag.SiteList as List<DT_App.Models.SiteModel>;
+    var dataset = ViewBag.DataList as List<DT_App.Models.DataView>;
     var siteJson = JsonConvert.SerializeObject(sites);
+    var historicalJson = JsonConvert.SerializeObject(dataset);
+    var lastqueryDateTime = (DateTime)ViewBag.LastQueryDate;
+    var viewId = (int)ViewBag.ViewID;
     ViewData["Title"] = "Forecast";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -69,9 +73,11 @@
 
 <script>
     window.siteData = @Html.Raw(siteJson);
+    window.historicalData = @Html.Raw(historicalJson);
     console.log("Loaded siteData globally:", window.siteData);
+    console.log("Loaded historicalData globally:", window.historicalData);
 </script>
-
+<input type="hidden" id="hViewId" value="@viewId" />
 <div class="top-bar">
     <h2>@ViewData["Title"] - <label id="lblSubView">Map View</label></h2>
     <div class="menu-buttons">
@@ -88,13 +94,55 @@
         <div class="col-12">
             <div class="mb-3">
                 <label class="form-control-label">Measured Date</label>
-                <input type="date" value="@DateTime.Today" class="form-control" disabled>
+                <input id="queryDate" type="date" value="@lastqueryDateTime.Date.ToString("yyyy-MM-dd")" class="form-control">
+
+                <label class="form-control-label mt-2">Hour</label>
+                <select id="queryHour" class="form-control">
+                    @for (int hour = 0; hour < 24; hour++)
+                    {
+                        @if (lastqueryDateTime.Hour == hour)
+                        {
+                            <option value="@hour.ToString("D2")" selected>@hour.ToString("D2")</option>
+                        }
+                        else
+                        {
+                            <option value="@hour.ToString("D2")">@hour.ToString("D2")</option>
+                        }
+
+                    }
+                </select>
+
+                <a id="analyticsLink" class="nav-link glass-btn mt-2" href="#">
+                    Show on Map
+                </a>
             </div>
         </div>
     </div>
 
     <div class="content" id="contentContainer">
-        @await Html.PartialAsync("_DefaultPartial")
+        @switch (viewId)
+        {
+            case 1:
+                @await Html.PartialAsync("_TrafficPartial")
+                ;
+                break;
+            case 2:
+                @await Html.PartialAsync("_WeatherPartial")
+                ;
+                break;
+            case 3:
+                @await Html.PartialAsync("_PollutionPartial")
+                ;
+                break;
+            case 4:
+                @await Html.PartialAsync("_CombinedPartial")
+                ;
+                break;
+            case 0:
+                @await Html.PartialAsync("_CombinedPartial")
+                ;
+                break;
+        }
     </div>
 </div>
 
@@ -119,6 +167,36 @@
         $("#btnCombined").click(function () {
             $("#lblSubView").text("Combined View");
             loadPartial('CombinedPartial');
+        });
+
+        $("#analyticsLink").click(function (e) {
+            e.preventDefault();
+
+            let dateVal = $("#queryDate").val();
+            const hourVal = $("#queryHour").val();
+
+            if (!dateVal || !hourVal) {
+                alert("Please select both date and hour.");
+                return;
+            }
+
+            // Check if date is in DD-MM-YYYY, convert if needed
+            if (dateVal.includes("-") && dateVal.split("-")[0].length === 2) {
+                const parts = dateVal.split("-");
+                dateVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+
+            // Construct datetime string
+            const datetimeString = dateVal + " " + hourVal + ":00:00";
+
+            // Build URL
+            const baseUrl = '@Url.Action("Index", "Forecast")';
+            const viewId = $("#hViewId").val();
+            const finalUrl = `${baseUrl}?queryDatetime=${encodeURIComponent(datetimeString)}&viewId=${viewId}`;
+
+            console.log("Redirecting to: " + finalUrl);
+
+            window.location.href = finalUrl;
         });
 
         function loadPartial(partialName) {

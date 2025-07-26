@@ -1,9 +1,9 @@
 ﻿@using Newtonsoft.Json
 @{
     var sites = ViewBag.SiteList as List<DT_App.Models.SiteModel>;
-    var mlDataset = ViewBag.MLDataList as List<DT_App.Models.DataView>;
+    var dataset = ViewBag.DataList as List<DT_App.Models.DataView>;
     var siteJson = JsonConvert.SerializeObject(sites);
-    var mlJson = JsonConvert.SerializeObject(mlDataset);
+    var historicalJson = JsonConvert.SerializeObject(dataset);
     var lastqueryDateTime = (DateTime)ViewBag.LastQueryDate;
     var viewId = (int)ViewBag.ViewID;
     ViewData["Title"] = "Analytics";
@@ -73,8 +73,9 @@
 
 <script>
     window.siteData = @Html.Raw(siteJson);
-    window.mlData = @Html.Raw(mlJson);
+    window.historicalData = @Html.Raw(historicalJson);
     console.log("Loaded siteData globally:", window.siteData);
+    console.log("Loaded historicalData globally:", window.historicalData);
 </script>
 <input type="hidden" id="hViewId" value="@viewId" />
 <div class="top-bar">
@@ -131,7 +132,7 @@
                 @await Html.PartialAsync("_CombinedPartial");
                 break;
             case 0:
-                @await Html.PartialAsync("_DefaultPartial");
+                @await Html.PartialAsync("_CombinedPartial");
                 break;
         }
     </div>

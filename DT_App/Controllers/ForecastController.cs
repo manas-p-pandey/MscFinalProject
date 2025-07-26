@@ -53,7 +53,8 @@ namespace DT_App.Controllers
             try
             {
                 ViewBag.SiteList = await _siteClient.GetSitesAsync();
-                ViewBag.MLDataList = await _dataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
+                var hdResponse = await _dataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
+                ViewBag.DataList = hdResponse.Data;
                 ViewBag.ViewID = viewID;
                 ViewBag.LastQueryDate = queryDateTime;
                 return true;

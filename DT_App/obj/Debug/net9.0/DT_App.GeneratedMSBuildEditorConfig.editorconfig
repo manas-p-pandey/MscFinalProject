@@ -28,10 +28,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9Db21iaW5lZFBhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Analytics/_DefaultPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9EZWZhdWx0UGFydGlhbC5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
 [D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Analytics/_PollutionPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9Qb2xsdXRpb25QYXJ0aWFsLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
@@ -50,10 +46,6 @@ build_metadata.AdditionalFiles.CssScope =
 
 [D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_CombinedPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcX0NvbWJpbmVkUGFydGlhbC5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_DefaultPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcX0RlZmF1bHRQYXJ0aWFsLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_PollutionPartial.cshtml]
