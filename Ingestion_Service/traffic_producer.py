@@ -193,5 +193,62 @@ def produce_traffic_data():
     model.save(model_path)
     upload_model_to_api(model_path)
 
+    start_date = datetime.now() - timedelta(days=365)
+    end_date = datetime.now()
+
+    for index, site in site_df.iterrows():
+        lat = float(site["latitude"])
+        lon = float(site["longitude"])
+
+        cursor.execute("""
+            SELECT DISTINCT measurement_datetime FROM traffic_table
+            WHERE latitude = %s AND longitude = %s;
+        """, (lat, lon))
+        existing = set(row[0].replace(minute=0, second=0, microsecond=0) for row in cursor.fetchall())
+
+        expected_hours = []
+        current = start_date.replace(minute=0, second=0, microsecond=0)
+        while current <= end_date:
+            expected_hours.append(current)
+            current += timedelta(hours=1)
+
+        missing_hours = [dt for dt in expected_hours if dt not in existing]
+        print(f"🔍 Traffic: {lat}, {lon} - Missing: {len(missing_hours)} hours")
+
+        for dt in missing_hours:
+            cursor.execute("""
+                SELECT 1 FROM traffic_table
+                WHERE latitude = %s AND longitude = %s AND measurement_datetime = %s
+            """, (lat, lon, dt))
+            if cursor.fetchone():
+                print(f"⏭️ Skipping existing traffic record at {dt}")
+                continue
+
+            last_seq = merged_df[features].iloc[-sequence_length:].values.copy()
+            last_seq[-1][-3] = lat
+            last_seq[-1][-2] = lon
+            last_seq[-1][-1] = dt.timestamp()
+
+            last_seq_scaled = scaler.transform(last_seq).reshape(1, sequence_length, -1)
+
+            pred_probs = model.predict(last_seq_scaled)[0]
+            pred_label = np.argmax(pred_probs)
+            flow_category = flow_encoder.inverse_transform([pred_label])[0]
+            density_category = inverse_density(flow_category)
+
+            payload = {
+                "measurement_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "latitude": lat,
+                "longitude": lon,
+                "traffic_flow": flow_category,
+                "traffic_density": density_category
+            }
+
+            producer.send("traffic_data", payload)
+            print(f"✅ Sent: {payload}")
+
+        producer.flush()
+    print("\u2705 Traffic data production completed.")
+
 if __name__ == "__main__":
     produce_traffic_data()
