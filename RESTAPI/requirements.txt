@@ -19,3 +19,4 @@ scikit-learn==1.4.2
 xgboost
 joblib
 python-dateutil
+redis
