@@ -1,8 +1,4 @@
-﻿using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using DT_App.Models;
+﻿using Microsoft.AspNetCore.Mvc;
 using DT_App.ServiceClient;
 
 namespace DT_App.Controllers
@@ -19,40 +15,29 @@ namespace DT_App.Controllers
         }
 
         // default call
-        public async Task<IActionResult> Index(DateTime queryDatetime, int viewID = 0)
+        public async Task<IActionResult> Index(DateTime queryDatetime)
         {
-            var result = await SetupViewModel(viewID, queryDatetime);
+            var result = await SetupViewModel(queryDatetime);
             return View();
         }
 
-        public async Task<IActionResult> TrafficPartial()
+        public async Task<IActionResult> GetHistoricalDataByDate(DateTime queryDatetime)
         {
-            return PartialView("_TrafficPartial");
+            var hdResponse = await _dataClient.GetHistoricalDataAsync(queryDatetime.ToString("yyyy-MM-dd HH:00:00"));
+            if (hdResponse.StatusCode != "201")
+            {
+                return BadRequest(new { message = hdResponse.StatusMessage });
+            }
+            return Ok(hdResponse);
         }
 
-        public async Task<IActionResult> WeatherPartial()
-        {
-            return PartialView("_WeatherPartial");
-        }
-
-        public async Task<IActionResult> PollutionPartial()
-        {
-            return PartialView("_PollutionPartial");
-        }
-
-        public async Task<IActionResult> CombinedPartial()
-        {
-            return PartialView("_CombinedPartial");
-        }
-
-        private async Task<bool> SetupViewModel(int viewID, DateTime queryDateTime)
+        private async Task<bool> SetupViewModel(DateTime queryDateTime)
         {
             try
             {
                 ViewBag.SiteList = await _siteClient.GetSitesAsync();
                 var hdResponse = await _dataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
                 ViewBag.DataList = hdResponse.Data;
-                ViewBag.ViewID = viewID;
                 ViewBag.LastQueryDate = queryDateTime;
                 return true;
             }

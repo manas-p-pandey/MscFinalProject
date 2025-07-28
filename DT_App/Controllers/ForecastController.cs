@@ -1,9 +1,6 @@
-﻿using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using DT_App.Models;
+﻿using Microsoft.AspNetCore.Mvc;
 using DT_App.ServiceClient;
+using DT_App.Models;
 
 namespace DT_App.Controllers
 {
@@ -18,45 +15,40 @@ namespace DT_App.Controllers
             _dataClient = dataClient;
         }
 
-        public async Task<IActionResult> Index(DateTime queryDatetime, int viewID = 0)
+        public async Task<IActionResult> Index(DateTime queryDatetime, ForecastRequest request)
         {
-            var result = await SetupViewModel(viewID, queryDatetime);
+            if(queryDatetime== DateTime.MinValue)
+            {
+                queryDatetime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
+
+            }
+            var result = await SetupViewModel(queryDatetime, request);
             return View();
         }
 
-        public async Task<IActionResult> TrafficPartial()
+        [HttpPost]
+        public async Task<IActionResult> GetForecastDataByDate([FromBody] ForecastRequest request)
         {
-            //var result = await SetupViewModel();
-            return PartialView("_TrafficPartial");
+            Console.WriteLine("Received datetime: " + request?.DateTime);
+            Console.WriteLine("Traffic count: " + request?.TrafficData?.Count);
+
+            var forecastResponse = await _dataClient.GetForecastDataAsync(request);
+
+            if (forecastResponse.StatusCode != "201")
+            {
+                return BadRequest(new { message = forecastResponse.StatusMessage });
+            }
+            return Ok(forecastResponse);
         }
 
-        public async Task<IActionResult> WeatherPartial()
-        {
-            //var result = await SetupViewModel();
-            return PartialView("_WeatherPartial");
-        }
-
-        public async Task<IActionResult> PollutionPartial()
-        {
-            //var result = await SetupViewModel();
-            return PartialView("_PollutionPartial");
-        }
-
-        public async Task<IActionResult> CombinedPartial()
-        {
-            //var result = await SetupViewModel();
-            return PartialView("_CombinedPartial");
-        }
-
-        private async Task<bool> SetupViewModel(int viewID, DateTime queryDateTime)
+        private async Task<bool> SetupViewModel(DateTime queryDatetime, ForecastRequest request)
         {
             try
             {
                 ViewBag.SiteList = await _siteClient.GetSitesAsync();
-                var hdResponse = await _dataClient.GetHistoricalDataAsync(queryDateTime.ToString("yyyy-MM-dd HH:00:00"));
+                var hdResponse = await _dataClient.GetForecastDataAsync(request);
                 ViewBag.DataList = hdResponse.Data;
-                ViewBag.ViewID = viewID;
-                ViewBag.LastQueryDate = queryDateTime;
+                ViewBag.LastQueryDate = queryDatetime;
                 return true;
             }
             catch
