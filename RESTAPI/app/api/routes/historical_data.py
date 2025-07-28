@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
 from app.schemas.historical_data import Historical_Data
-from app.services.historical_data_view import historical_service
+from app.services.historical_data_service import historical_service
 from datetime import datetime
 from typing import List
 

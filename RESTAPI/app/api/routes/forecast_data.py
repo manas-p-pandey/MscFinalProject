@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
-from app.schemas.forecast_data import Forecast_Data
-from app.services.forecast_data_service import forecast_service
+from app.schemas.forecast_data import ForecastRequest, ForecastResponse
+from app.services import forecast_data_service
 from datetime import datetime
 from typing import List
 
@@ -12,23 +12,15 @@ async def get_db():
     async with SessionLocal() as session:
         yield session
 
-@router.get("/", response_model=List[Forecast_Data])
-async def read_records_by_datetime(
-    datetime_value: str = Query(..., description="Datetime string in format YYYY-MM-DD HH:00:00"),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        parsed_dt = datetime.strptime(datetime_value, "%Y-%m-%d %H:%M:%S")        
-        print(f"ParsedDate: {parsed_dt}")
-        if parsed_dt.date() < datetime.now().date():
-            raise HTTPException(status_code=401, detail="Date value should be on or after today's date")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid datetime format. Use YYYY-MM-DD HH:00:00")
+@router.post("/", response_model=List[ForecastResponse])
+async def get_forecast_data(req: ForecastRequest, db: AsyncSession = Depends(get_db)):
+    print(req)
+    if req.datetime.replace(minute=0,second=0, microsecond=0) < datetime.now().replace(minute=0,second=0, microsecond=0):
+        raise HTTPException(status_code=400, detail="Datetime must be in the future or present.")
 
-    matching_records = await forecast_service(db, parsed_dt)
-    print(f"{len(matching_records)} row(s) returned matching forecast datetime")
+    results = await forecast_data_service.get_forecast_data(db, req.datetime, req.traffic_data)
 
-    if not matching_records:
-        raise HTTPException(status_code=404, detail="Forecast not found for the given datetime")
+    if not results:
+        raise HTTPException(status_code=404, detail="No forecast data available for the specified datetime. Possibly forecast API not reached")
 
-    return matching_records
+    return results
