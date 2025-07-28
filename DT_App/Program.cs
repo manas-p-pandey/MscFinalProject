@@ -16,7 +16,7 @@ builder.Services.AddHttpClient<DashboardClient>();
 
 
 // controllers
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews().AddNewtonsoftJson();
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(8080); // Important: not localhost
