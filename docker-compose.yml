@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     image: postgres:latest
@@ -12,32 +10,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-
-  api:
-    build:
-      context: ./RESTAPI
-      dockerfile: Dockerfile
-    container_name: DT_RestAPI
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./RESTAPI:/app
-    depends_on:
-      - db
-    env_file:
-      - ./RESTAPI/.env
-
-  mvcapp:
-    build:
-      context: ./DT_App
-      dockerfile: Dockerfile
-    container_name: DT_FrontEnd
-    ports:
-      - "8080:8080"
-    depends_on:
-      - api
-    environment:
-      - ASPNETCORE_URLS=http://0.0.0.0:8080
 
   pgadmin:
     image: dpage/pgadmin4
@@ -140,6 +112,39 @@ services:
       - "8081:8081"
     depends_on:
       - redis
+
+  
+
+  api:
+    build:
+      context: ./RESTAPI
+      dockerfile: Dockerfile
+    container_name: DT_RestAPI
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./RESTAPI:/app
+    depends_on:
+      - db
+    env_file:
+      - ./RESTAPI/.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - OPENWEATHER_API_KEY=0fb0f50c2badb10762006b6384c5b5da
+
+  mvcapp:
+    build:
+      context: ./DT_App
+      dockerfile: Dockerfile
+    container_name: DT_FrontEnd
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
 
 volumes:
   pgdata:
