@@ -48,6 +48,35 @@ docker-compose up --build <redis|redis-commander>
 docker-compose stop <redis|redis-commander>
 docker-compose rm -sf <redis|redis-commander>
 
+
+
+
+Python Workspace Setup - RESTAPI
+--------------------------------
+RESTAPI_AND_DBPIPELINE
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── models/
+│   │   └── user.py
+│   ├── schemas/
+│   │   └── user.py
+│   ├── api/
+│   │   └── routes/
+│   │       └── user.py
+│   ├── services/
+│   │   └── user_service.py
+│   ├── core/
+│   │   ├── config.py
+│   │   └── database.py
+├── alembic/
+│   └── versions/
+├── alembic.ini
+├── .env
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── run.py
 alembic init alembic
 
 setup virtual environment
