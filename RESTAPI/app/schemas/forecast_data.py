@@ -1,9 +1,18 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import List
 from datetime import datetime
 
-class Forecast_Data(BaseModel):
-    site_code : str
+class TrafficData(BaseModel):
+    latitude: float
+    longitude: float
+    traffic_density: str
+
+class ForecastRequest(BaseModel):
+    datetime: datetime
+    traffic_data: List[TrafficData]
+
+class ForecastResponse(BaseModel):
+    site_code: str
     site_name: str
     site_type: str
     latitude: float
@@ -27,6 +36,3 @@ class Forecast_Data(BaseModel):
     wind_deg: int
     traffic_flow: str
     traffic_density: str
-
-    class Config:
-        orm_mode = True
