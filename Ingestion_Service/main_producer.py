@@ -43,9 +43,9 @@ if __name__ == "__main__":
         if current_minute == 0 and current_second>=0 and current_second < 30 and current_hour == nextRun.hour:
             main()
             nextRun = datetime.now().replace(minute=0, second=0, microsecond=0)+timedelta(hours=+1)
-            print(f"⏰ Waiting to start next batch at {nextRun}")
+            print(f"⏰ Waiting to start next batch at {nextRun+timedelta(hours=+1)}")
         else:
-            print(f"⏰ Waiting to start next batch at {nextRun}")
+            print(f"⏰ Waiting to start next batch at {nextRun+timedelta(hours=+1)}")
         
         # Sleep briefly to reduce CPU load
         time.sleep(15)

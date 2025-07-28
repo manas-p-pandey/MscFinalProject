@@ -140,10 +140,25 @@
                 }
             </select>
         </div>
+        <button class="btn btn-secondary mb-2" id="btnOpenOverlay">Add Forecast Parameters</button>
         <div id="siteSelector" class="mt-3">
             <label class="form-control-label">Select Sites and Traffic Density</label>
         </div>
         <button class="btn btn-primary mt-3" id="btnForecast">Generate Forecast</button>
+    </div>
+    <div id="forecastOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:1050;">
+        <div style="background:white; width:600px; max-height:80vh; margin:5% auto; padding:20px; overflow-y:auto; border-radius:8px; position:relative;">
+            <h4>Add Forecast Parameters</h4>
+            <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="masterCheck" />
+                <label for="masterCheck" class="form-check-label"><strong>Select All Sites</strong></label>
+            </div>
+            <div id="overlaySiteSelector"></div>
+            <div class="mt-3 text-end">
+                <button class="btn btn-primary" id="btnSaveOverlay">Save</button>
+                <button class="btn btn-secondary" id="btnCloseOverlay">Close</button>
+            </div>
+        </div>
     </div>
 
     <div class="content" id="contentContainer">
@@ -482,7 +497,77 @@
             }
         });
 
-        // -- page events end ---
+        // --- page events end ---
+
+        // --- overlay function and events ---
+
+                // Build overlay site selectors dynamically (same structure)
+        function populateOverlaySites() {
+            const container = $('#overlaySiteSelector');
+            container.empty();
+            window.siteData.forEach((site, index) => {
+                container.append(`
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input site-check" id="overlay_site_${index}" data-lat="${site.latitude}" data-lon="${site.longitude}">
+                        <label class="form-check-label" for="overlay_site_${index}">${site.site_name}</label>
+                        <select class="form-control form-control-sm traffic-density mt-1">
+                            <option value="low">Low</option>
+                            <option value="moderate_low">Moderate Low</option>
+                            <option value="moderate" selected>Moderate</option>
+                            <option value="moderate_high">Moderate High</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                `);
+            });
+        }
+
+        // Show overlay
+        $('#btnOpenOverlay').click(function () {
+            populateOverlaySites();
+            $('#forecastOverlay').fadeIn();
+        });
+
+        // Close overlay
+        $('#btnCloseOverlay').click(function () {
+            $('#forecastOverlay').fadeOut();
+        });
+
+        // Master check/uncheck
+        $('#forecastOverlay').on('change', '#masterCheck', function () {
+            const checked = $(this).is(':checked');
+            $('#overlaySiteSelector .site-check').prop('checked', checked);
+        });
+
+        // Save overlay selection into main #siteSelector
+        $('#btnSaveOverlay').click(function () {
+            const mainContainer = $('#siteSelector');
+            mainContainer.empty();
+            $('#overlaySiteSelector .site-check:checked').each(function () {
+                const lat = $(this).data('lat');
+                const lon = $(this).data('lon');
+                const label = $(this).siblings('label').text();
+                const density = $(this).siblings('select.traffic-density').val();
+
+                mainContainer.append(`
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input site-check" checked data-lat="${lat}" data-lon="${lon}">
+                        <label class="form-check-label">${label}</label>
+                        <select class="form-control form-control-sm traffic-density mt-1">
+                            <option value="low" ${density === 'low' ? 'selected' : ''}>Low</option>
+                            <option value="moderate_low" ${density === 'moderate_low' ? 'selected' : ''}>Moderate Low</option>
+                            <option value="moderate" ${density === 'moderate' ? 'selected' : ''}>Moderate</option>
+                            <option value="moderate_high" ${density === 'moderate_high' ? 'selected' : ''}>Moderate High</option>
+                            <option value="high" ${density === 'high' ? 'selected' : ''}>High</option>
+                        </select>
+                    </div>
+                `);
+            });
+            $('#forecastOverlay').fadeOut();
+        });
+
+
+        // --- end overlay function and events ---
 
 
         // -- default actions ---

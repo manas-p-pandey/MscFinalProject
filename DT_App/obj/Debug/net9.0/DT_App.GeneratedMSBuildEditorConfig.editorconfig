@@ -24,40 +24,8 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Analytics/_CombinedPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9Db21iaW5lZFBhcnRpYWwuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Analytics/_PollutionPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9Qb2xsdXRpb25QYXJ0aWFsLmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Analytics/_TrafficPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9UcmFmZmljUGFydGlhbC5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Analytics/_WeatherPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQW5hbHl0aWNzXF9XZWF0aGVyUGFydGlhbC5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
 [D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcSW5kZXguY3NodG1s
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_CombinedPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcX0NvbWJpbmVkUGFydGlhbC5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_PollutionPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcX1BvbGx1dGlvblBhcnRpYWwuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_TrafficPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcX1RyYWZmaWNQYXJ0aWFsLmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Forecast/_WeatherPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9yZWNhc3RcX1dlYXRoZXJQYXJ0aWFsLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/OneDrive - University of Roehampton/Documents/MScDataScience/Projects/MSc_Project/SourceCode/MscFinalProject/DT_App/Views/Home/Index.cshtml]
