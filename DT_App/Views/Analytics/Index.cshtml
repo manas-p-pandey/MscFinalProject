@@ -5,7 +5,6 @@
     var siteJson = JsonConvert.SerializeObject(sites);
     var historicalJson = JsonConvert.SerializeObject(dataset);
     var lastqueryDateTime = (DateTime)ViewBag.LastQueryDate;
-    var viewId = (int)ViewBag.ViewID;
     ViewData["Title"] = "Analytics";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -19,15 +18,20 @@
         background-color: #f5f5f5;
     }
 
-        .top-bar h2 {
-            margin: 0;
+    .top-bar h2 {
+        margin: 0;
         }
+
+    .menu-buttons {
+        display: flex;
+        align-items: center;
+    }
 
     .menu-buttons button {
         width: 50px;
         height: 50px;
         margin-left: 10px;
-        background-color: #444;
+        background-color: #000;
         color: white;
         border: none;
         font-size: 1.2em;
@@ -35,9 +39,9 @@
         border-radius: 8px;
     }
 
-        .menu-buttons button:hover {
-            background-color: #555;
-        }
+    .menu-buttons button:hover {
+        background-color: #555;
+    }
 
     .main-container {
         display: flex;
@@ -69,6 +73,26 @@
         padding: 0;
         overflow: hidden;
     }
+
+    .north-indicator {
+        display: flex;
+        align-items: center;
+        margin-right: 15px;
+        font-weight: bold;
+        color: Red;
+        font-size: 18px;
+    }
+
+    .north-indicator i {
+        transform: rotate(0deg);
+        margin-right: 5px;
+    }
+
+    .menu-buttons button.active {
+        background-color: #555;
+        outline: 2px solid black;
+        outline-offset: 2px;
+    }
 </style>
 
 <script>
@@ -77,9 +101,14 @@
     console.log("Loaded siteData globally:", window.siteData);
     console.log("Loaded historicalData globally:", window.historicalData);
 </script>
-<input type="hidden" id="hViewId" value="@viewId" />
 <div class="top-bar">
-    <h2>@ViewData["Title"] - <label id="lblSubView">Map View</label></h2>
+    <h2>
+        @ViewData["Title"] - <label id="lblSubView">Map View</label>
+    </h2>
+    <div class="north-indicator">
+        <i class="fas fa-long-arrow-alt-up"></i> N
+    </div>
+    
     <div class="menu-buttons">
         <button id="btnTraffic"><i class="fas fa-car"></i></button>
         <button id="btnWeather"><i class="fas fa-cloud-sun"></i></button>
@@ -118,85 +147,338 @@
     </div>
 
     <div class="content" id="contentContainer">
-        @switch(viewId){
-            case 1:
-                @await Html.PartialAsync("_TrafficPartial");
-                break;
-            case 2:
-                @await Html.PartialAsync("_WeatherPartial");
-                break;
-            case 3:
-                @await Html.PartialAsync("_PollutionPartial");
-                break;
-            case 4:
-                @await Html.PartialAsync("_CombinedPartial");
-                break;
-            case 0:
-                @await Html.PartialAsync("_CombinedPartial");
-                break;
-        }
+        <div id="loadingSpinner" class="spinner-border text-primary" style="display:none; position:absolute; top:50%; left:50%; z-index:1000;" role="status"></div>
+        <div id="alertBox" class="alert" style="display:none; position:absolute; top:10px; right:10px; z-index:1000;"></div>
+        <!-- CesiumJS container -->
+        <div id="cesiumContainer"></div>
     </div>
 </div>
 
-<script>
-    $(document).ready(function () {
-        
-        $("#btnTraffic").click(function () {
-            $("#lblSubView").text("Traffic View");
-            loadPartial('TrafficPartial');
-            $("#hViewId").val("1")
+@section Scripts {
+    <script>
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwMzQ2N2UzMi0wNzIzLTQzN2ItYWExYi0xZWM5MWZjNTQzNjUiLCJpZCI6MzE5MDk5LCJpYXQiOjE3NTE4NjY0NTJ9.Z7ZakLa9T-7er2aTf9m_MEhF8Di-gTDted1Xn-igj9U';
+        console.log("locationData", window.siteData);
+        console.log("historicalData" ,window.historicalData);
+        var viewer = new Cesium.Viewer("cesiumContainer", {
+            animation: false,
+            baseLayerPicker: true,
+            navigationHelpButton: false,
+            sceneModePicker: true,
+            homeButton: false,
+            geocoder: true,
+            fullscreenButton: true,
+            timeline: false
+            });
+
+        // onpageshow 3d tiles
+        // async function loadTileset(){
+        //     const osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
+        //     viewer.scene.primitives.add(osmBuildingsTileset);
+        // }
+
+        // loadTileset();
+
+        function clearEntities() {
+            viewer.entities.removeAll();
+        }
+
+        // --- Load Sites pin ---
+
+        var pinBuilder = new Cesium.PinBuilder();
+
+        function loadSites(){
+            window.siteData.forEach(function(point) {
+                viewer.entities.add({
+                    name: point.site_code,
+                    position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 1.0),
+                    billboard: {
+                        image: pinBuilder.fromUrl("./images/sensor.png", Cesium.Color.fromCssColorString('#3f51b5'), 48),
+                    },
+                    label: {
+                        text: point.site_name,
+                        font: "14pt sans-serif",
+                        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                        outlineWidth: 2,
+                        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                        pixelOffset: new Cesium.Cartesian2(0, 10)
+                    }
+                });
+            });
+        }
+
+
+        // --- show traffic view ---
+        function showTraffic(){
+            window.historicalData.forEach(point => {
+                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude);
+
+                // --------- Traffic via PointGraphics -----------
+                const trafficCount = getTrafficDensityCount(point.traffic_density); // defines how many points
+                const trafficColor = getTrafficFlowColor(point.traffic_flow); // inverse of density
+
+                for (let i = 0; i < trafficCount; i++) {
+                    // slight random offset to avoid exact overlap
+                    const offset = Cesium.Cartesian3.fromDegrees(
+                        point.longitude + (Math.random() - 0.5) * 0.0001,
+                        point.latitude + (Math.random() - 0.5) * 0.0001
+                    );
+
+                    viewer.entities.add({
+                        name: `Traffic: ${point.traffic_density}`,
+                        position: offset,
+                        point: {
+                            pixelSize: 20,
+                            color: trafficColor,
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- Traffic Density Count ---
+        function getTrafficDensityCount(density) {
+            switch (density) {
+                case 'low': return 1;
+                case 'moderate_low': return 3;
+                case 'moderate': return 5;
+                case 'moderate_high': return 7;
+                case 'high': return 10;
+                default: return 1;
+            }
+        }
+
+        // --- Traffic Flow Color (inverse of density) ---
+        function getTrafficFlowColor(flow) {
+            switch (flow) {
+                case 'low': return Cesium.Color.RED;
+                case 'moderate_low': return Cesium.Color.ORANGE;
+                case 'moderate': return Cesium.Color.YELLOW;
+                case 'moderate_high': return Cesium.Color.GREEN;
+                case 'high': return Cesium.Color.BLUE;
+                default: return Cesium.Color.BLUE;
+            }
+        }
+        // --- end traffic methods ---
+
+
+        // --- Color for AQI level ---
+
+        function showPollution(){
+            window.historicalData.forEach(point => {
+                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude);
+
+                // --------- AQI via EllipsoidGraphics -----------
+                const aqiColor = getAqiColor(point.aqi);
+                viewer.entities.add({
+                    name: `AQI: ${point.aqi}`,
+                    position: pos,
+                    ellipsoid: {
+                        radii: new Cesium.Cartesian3(200, 200, 200),
+                        material: aqiColor.withAlpha(0.3),
+                    }
+                });
+            });
+        }
+
+        function getAqiColor(aqi) {
+            switch (aqi) {
+                case 1: return Cesium.Color.LIME;
+                case 2: return Cesium.Color.YELLOW;
+                case 3: return Cesium.Color.BLUE;
+                case 4: return Cesium.Color.ORANGE;
+                case 5: return Cesium.Color.RED;
+                default: return Cesium.Color.GRAY;
+            }
+        }
+
+        // --- end pollution methods
+
+        // --- show weather view ---
+        function showWeather(){
+            window.historicalData.forEach(point => {
+                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude);
+
+                // --------- Weather via PolylineArrow -----------
+                addCenteredWindArrow(viewer, point.latitude, point.longitude, point.wind_deg, point.wind_speed);
+
+            });
+        }
+
+        // --- Weather/ Wind Data---
+        function addCenteredWindArrow(viewer, lat, lon, wind_deg, wind_speed) {
+            const length = 0.005 * wind_speed; // arrow total length in degrees
+            const heading = Cesium.Math.toRadians(wind_deg);
+
+            // Compute start and end points around the center
+            const dx = (length / 2) * Math.sin(heading);
+            const dy = (length / 2) * Math.cos(heading);
+
+            const startLon = lon - dx;
+            const startLat = lat - dy;
+            const endLon = lon + dx;
+            const endLat = lat + dy;
+
+            viewer.entities.add({
+                polyline: {
+                    positions: Cesium.Cartesian3.fromDegreesArray([
+                        startLon, startLat,
+                        endLon, endLat
+                    ]),
+                    width: 8,
+                    material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.CYAN),
+                },
+                label: {
+                    text: `💨 ${wind_speed.toFixed(1)} m/s`,
+                    font: '14px sans-serif',
+                    fillColor: Cesium.Color.DODGERBLUE,
+                    showBackground: true,
+                    backgroundColor: Cesium.Color.WHITE.withAlpha(0.6),
+                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                    pixelOffset: new Cesium.Cartesian2(0, -20),
+                    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+                }
+            });
+        }
+        // --- end weather methods ---
+
+        function showCombined() {
+            showTraffic();
+            showWeather();
+            showPollution();
+        }
+
+
+
+
+        async function reloadHistoricalData(queryDateTimeString) {
+            $('#loadingSpinner').show();
+            try {
+                const response = await fetch(`/Analytics/GetHistoricalDataByDate?queryDatetime=${encodeURIComponent(queryDateTimeString)}`);
+                if (!response.ok) throw new Error("Failed to fetch historical data");
+                const json = await response.json();
+
+                if (json && json.data) {
+                    window.historicalData = json.data;
+                    console.log("Historical data updated:", window.historicalData);
+                } else {
+                    showAlert("No data found in response","warning");
+                }
+            } catch (err) {
+                showAlert("Error fetching historical data:"+ err,"danger");
+            }finally {
+                $('#loadingSpinner').hide();
+            }
+        }
+
+
+        function computeGeographicMidpoint(locations) {
+            let x = 0, y = 0, z = 0;
+
+            locations.forEach(loc => {
+                const latRad = Cesium.Math.toRadians(loc.latitude);
+                const lonRad = Cesium.Math.toRadians(loc.longitude);
+
+                x += Math.cos(latRad) * Math.cos(lonRad);
+                y += Math.cos(latRad) * Math.sin(lonRad);
+                z += Math.sin(latRad);
+            });
+
+            const total = locations.length;
+            x /= total;
+            y /= total;
+            z /= total;
+
+            const hyp = Math.sqrt(x * x + y * y);
+            const lat = Math.atan2(z, hyp);
+            const lon = Math.atan2(y, x);
+
+            return {
+                latitude: Cesium.Math.toDegrees(lat),
+                longitude: Cesium.Math.toDegrees(lon)
+            };
+        }
+
+
+        function showAlert(msg, type) {
+            $('#alertBox').removeClass().addClass(`alert alert-${type}`).text(msg).fadeIn();
+            setTimeout(() => { $('#alertBox').fadeOut(); }, 4000);
+        }
+
+        // -- Page events ---
+
+        $("#btnTraffic").click(function (e) {
+            e.preventDefault();
+            clearEntities();
+            loadSites();
+            showTraffic();
         });
 
-        $("#btnWeather").click(function () {
-            $("#lblSubView").text("Weather View");
-            loadPartial('WeatherPartial');
-            $("#hViewId").val("2")
+        $("#btnWeather").click(function (e) {
+            e.preventDefault();
+            clearEntities();
+            loadSites();
+            showWeather();
         });
 
-        $("#btnPollution").click(function () {
-            $("#lblSubView").text("Pollution View");
-            loadPartial('PollutionPartial');
-            $("#hViewId").val("3")
+        $("#btnPollution").click(function (e) {
+            e.preventDefault();
+            clearEntities();
+            loadSites();
+            showPollution();
         });
 
-        $("#btnCombined").click(function () {
-            $("#lblSubView").text("Combined View");
-            loadPartial('CombinedPartial');
-            $("#hViewId").val("4")
+        $("#btnCombined").click(function (e) {
+            e.preventDefault();
+            clearEntities();
+            loadSites();
+            showCombined();
         });
 
-        $("#analyticsLink").click(function (e) {
+        $('.menu-buttons button').on('click', function () {
+            $('.menu-buttons button').removeClass('active');
+            $(this).addClass('active');
+        });
+
+        $("#analyticsLink").click(async function (e) {
             e.preventDefault();
 
             let dateVal = $("#queryDate").val();
             const hourVal = $("#queryHour").val();
 
             if (!dateVal || !hourVal) {
-                alert("Please select both date and hour.");
+                showAlert("Please select both date and hour.","warning");
                 return;
             }
 
-            // Check if date is in DD-MM-YYYY, convert if needed
-            if (dateVal.includes("-") && dateVal.split("-")[0].length === 2) {
-                const parts = dateVal.split("-");
-                dateVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
+            // Construct ISO datetime string
+            const datetimeString = `${dateVal} ${hourVal}:00:00`;
 
-            // Construct datetime string
-            const datetimeString = dateVal + " " + hourVal + ":00:00";
+            await reloadHistoricalData(datetimeString);
 
-            // Build URL
-            const baseUrl = '@Url.Action("Index", "Analytics")';
-            const viewId = $("#hViewId").val();
-            const finalUrl = `${baseUrl}?queryDatetime=${encodeURIComponent(datetimeString)}&viewId=${viewId}`;
-
-            console.log("Redirecting to: " + finalUrl);
-
-            window.location.href = finalUrl;
+            clearEntities();
+            loadSites();
+            showCombined();
         });
 
-        function loadPartial(partialName) {
-            $("#contentContainer").load('/Analytics/' + partialName);
-        }
-    });
-</script>
+        // -- page events end ---
+
+
+        // -- default actions ---
+        var centrePoint = computeGeographicMidpoint(window.siteData);
+
+        // Camera View set
+        viewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(centrePoint.longitude, centrePoint.latitude, 2000.0),
+            orientation: {
+                heading: Cesium.Math.toRadians(0.0),
+                pitch: Cesium.Math.toRadians(-40.0),
+                roll: 0.0
+            }
+        });
+
+        clearEntities();
+        loadSites();
+        showCombined();
+
+    </script>
+}
