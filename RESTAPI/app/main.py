@@ -19,6 +19,6 @@ def create_tables():
 # app.include_router(logs.router, prefix="/logs", tags=["Logs"])
 app.include_router(site.router, prefix="/sites", tags=["Sites"])
 app.include_router(historical_data.router, prefix="/historical_data", tags=["HistoricalData"])
-app.include_router(forecast_data.router, prefix="/forecast_data", tags=["ForecastData"])
+app.include_router(forecast_data.router, prefix="/forecast_data")
 app.include_router(dashboard_data.router, prefix="/dashboard", tags=["DashboardData"])
 app.include_router(model_upload_api.router, prefix="/models", tags=["Model Upload"])
