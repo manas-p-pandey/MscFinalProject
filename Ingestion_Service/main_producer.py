@@ -31,17 +31,21 @@ def main():
 if __name__ == "__main__":
     # logic to wait and call at every hour of the day if not already running
     main()
-    firstRun = datetime.now()
-    print(f"⏰ Waiting to start next batch at {firstRun.replace(hour=1, minute=0, second=0, microsecond=0)+timedelta(days=1)}")
+    nextRun = datetime.now().replace(minute=0, second=0, microsecond=0)+timedelta(hours=+1)
+    print(f"⏰ Waiting to start next batch at {nextRun}")
     while True:
-        now = datetime.now()+timedelta(hours=+1) # to get local time from utc
+        now = datetime.now()# to get local time from utc
         current_hour = now.hour
         current_minute = now.minute
         current_second = now.second
 
         # Check if it's the start of a new hour and hasn't been run in this hour
-        if current_minute == 0 and current_second>=0 and current_second < 10 and current_hour ==1:
+        if current_minute == 0 and current_second>=0 and current_second < 30 and current_hour == nextRun.hour:
             main()
-            print(f"⏰ Waiting to start next batch at {now.replace(hour=1, minute=0, second=0, microsecond=0)+timedelta(days=1)}")
+            nextRun = datetime.now().replace(minute=0, second=0, microsecond=0)+timedelta(hours=+1)
+            print(f"⏰ Waiting to start next batch at {nextRun}")
+        else:
+            print(f"⏰ Waiting to start next batch at {nextRun}")
+        
         # Sleep briefly to reduce CPU load
-        time.sleep(1)
+        time.sleep(15)
