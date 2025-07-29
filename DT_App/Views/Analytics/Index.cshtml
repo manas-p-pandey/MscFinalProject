@@ -167,10 +167,6 @@
                         
                     }
                 </select>
-
-                <a id="analyticsLink" class="nav-link glass-btn mt-2" href="#">
-                    Show on Map
-                </a>
             </div>
         </div>
         <div id="mapLegend" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border: 1px solid #ccc; border-radius: 8px;">
@@ -181,8 +177,8 @@
                 <li><span style="display:inline-block;width:15px;height:15px;background:red;margin-right:5px;"></span> Low Flow (High Density)</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:orange;margin-right:5px;"></span> Moderate Low Flow</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:yellow;margin-right:5px;"></span> Moderate Flow</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:green;margin-right:5px;"></span> Moderate High Flow</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:blue;margin-right:5px;"></span> High Flow (Low Density)</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;margin-right:5px;"></span> Moderate High Flow</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:green;margin-right:5px;"></span> High Flow (Low Density)</li>
             </ul>
 
             <div><strong>Weather:</strong></div>
@@ -194,8 +190,8 @@
             <div><strong>Air Quality (AQI):</strong></div>
             <ul style="padding-left: 20px;">
                 <li><span style="display:inline-block;width:15px;height:15px;background:lime;opacity:0.5;margin-right:5px;"></span> AQI 1 - Good</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:yellow;opacity:0.5;margin-right:5px;"></span> AQI 2 - Fair</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;opacity:0.5;margin-right:5px;"></span> AQI 2 - Fair</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:yellow;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:orange;opacity:0.5;margin-right:5px;"></span> AQI 4 - Poor</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:red;opacity:0.5;margin-right:5px;"></span> AQI 5 - Very Poor</li>
             </ul>
@@ -215,7 +211,8 @@
         Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwMzQ2N2UzMi0wNzIzLTQzN2ItYWExYi0xZWM5MWZjNTQzNjUiLCJpZCI6MzE5MDk5LCJpYXQiOjE3NTE4NjY0NTJ9.Z7ZakLa9T-7er2aTf9m_MEhF8Di-gTDted1Xn-igj9U';
         console.log("locationData", window.siteData);
         console.log("historicalData" ,window.historicalData);
-        var viewer = new Cesium.Viewer("cesiumContainer", {
+        const viewer = new Cesium.Viewer("cesiumContainer", {
+            //terrain: Cesium.Terrain.fromWorldTerrain(),
             animation: false,
             baseLayerPicker: true,
             navigationHelpButton: false,
@@ -227,11 +224,14 @@
             });
 
         // onpageshow 3d tiles
-        // async function loadTileset(){
-        //     const osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
-        //     viewer.scene.primitives.add(osmBuildingsTileset);
-        // }
-
+        async function loadTileset(){
+            try{
+                const osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
+                viewer.scene.primitives.add(osmBuildingsTileset);
+            }catch (error) {
+              console.log(`Error loading tileset: ${error}`);
+            }
+        }
         // loadTileset();
 
         function clearEntities() {
@@ -286,7 +286,7 @@
                         font: "14pt sans-serif",
                         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                         outlineWidth: 2,
-                        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                        verticalOrigin: Cesium.VerticalOrigin.TOP,
                         pixelOffset: new Cesium.Cartesian2(0, 10)
                     },
                     properties: {
@@ -349,8 +349,8 @@
                 case 'low': return Cesium.Color.RED;
                 case 'moderate_low': return Cesium.Color.ORANGE;
                 case 'moderate': return Cesium.Color.YELLOW;
-                case 'moderate_high': return Cesium.Color.GREEN;
-                case 'high': return Cesium.Color.BLUE;
+                case 'moderate_high': return Cesium.Color.CYAN;
+                case 'high': return Cesium.Color.LIME;
                 default: return Cesium.Color.BLUE;
             }
         }
@@ -382,8 +382,8 @@
         function getAqiColor(aqi) {
             switch (aqi) {
                 case 1: return Cesium.Color.LIME;
-                case 2: return Cesium.Color.YELLOW;
-                case 3: return Cesium.Color.CYAN;
+                case 2: return Cesium.Color.CYAN;
+                case 3: return Cesium.Color.YELLOW;
                 case 4: return Cesium.Color.ORANGE;
                 case 5: return Cesium.Color.RED;
                 default: return Cesium.Color.CYAN;
@@ -433,8 +433,8 @@
                     fillColor: Cesium.Color.DODGERBLUE,
                     showBackground: true,
                     backgroundColor: Cesium.Color.WHITE.withAlpha(0.6),
-                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                    pixelOffset: new Cesium.Cartesian2(0, -20),
+                    verticalOrigin: Cesium.VerticalOrigin.TOP,
+                    pixelOffset: new Cesium.Cartesian2(0, 10),
                     position: Cesium.Cartesian3.fromDegrees(lon, lat),
                 },
                 properties: {
@@ -454,7 +454,7 @@
 
 
         async function reloadHistoricalData(queryDateTimeString) {
-            $('#loadingSpinner').show();
+            //$('#loadingSpinner').show();
             try {
                 const response = await fetch(`/Analytics/GetHistoricalDataByDate?queryDatetime=${encodeURIComponent(queryDateTimeString)}`);
                 if (!response.ok) throw new Error("Failed to fetch historical data");
@@ -469,7 +469,7 @@
             } catch (err) {
                 showAlert("Error fetching historical data:"+ err,"danger");
             }finally {
-                $('#loadingSpinner').hide();
+                //$('#loadingSpinner').hide();
             }
         }
 
@@ -542,25 +542,64 @@
             $(this).addClass('active');
         });
 
-        $("#analyticsLink").click(async function (e) {
+        $("#queryDate").change(async function (e) {
             e.preventDefault();
-
+            $('#loadingSpinner').show();
             let dateVal = $("#queryDate").val();
             const hourVal = $("#queryHour").val();
 
             if (!dateVal || !hourVal) {
+                $('#loadingSpinner').hide();
                 showAlert("Please select both date and hour.","warning");
                 return;
             }
 
             // Construct ISO datetime string
             const datetimeString = `${dateVal} ${hourVal}:00:00`;
-
+            const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
+            const dateObj = new Date(isoString);
+            var validateTime = new Date();
+            if(dateObj>=validateTime){
+                $('#loadingSpinner').hide();
+                showAlert("Selected datetime should be 1 hour prior to current datetime.","danger");
+                return;
+            }
             await reloadHistoricalData(datetimeString);
 
             clearEntities();
             loadSites();
             showCombined();
+            $('#loadingSpinner').hide();
+        });
+
+        $("#queryHour").change(async function (e) {
+            e.preventDefault();
+            $('#loadingSpinner').show();
+            let dateVal = $("#queryDate").val();
+            const hourVal = $("#queryHour").val();
+
+            if (!dateVal || !hourVal) {
+                $('#loadingSpinner').hide();
+                showAlert("Please select both date and hour.","warning");
+                return;
+            }
+
+            // Construct ISO datetime string
+            const datetimeString = `${dateVal} ${hourVal}:00:00`;
+            const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
+            const dateObj = new Date(isoString);
+            var validateTime = new Date(); 
+            if(dateObj>=validateTime){
+                $('#loadingSpinner').hide();
+                showAlert("Selected datetime should be 1 hour prior to current datetime.","danger");
+                return;
+            }
+            await reloadHistoricalData(datetimeString);
+
+            clearEntities();
+            loadSites();
+            showCombined();
+            $('#loadingSpinner').hide();
         });
 
         // --- page events end ---

@@ -151,10 +151,10 @@
         <p>Filters:</p>
         <div class="form-group">
             <label>Date</label>
-            <input type="date" id="forecastDate" class="form-control" value="@lastqueryDateTime.ToString("yyyy-MM-dd")" />
+            <input type="date" id="queryDate" class="form-control" value="@lastqueryDateTime.ToString("yyyy-MM-dd")" />
 
             <label class="form-control-label mt-2">Hour</label>
-            <select id="forecastHour" class="form-control">
+            <select id="queryHour" class="form-control">
                 @for (int hour = 0; hour < 24; hour++)
                 {
                     @if (lastqueryDateTime.Hour == hour)
@@ -170,7 +170,6 @@
             </select>
         </div><br/>
         <button class="btn btn-secondary mb-2" id="btnOpenOverlay">Add Parameters +</button><br/>
-        <button class="btn btn-primary mt-3" id="btnForecast">Show Forecast on Map</button>
         <div id="hiddenSiteSelector" style="display:none;"></div>
         <div id="mapLegend" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border: 1px solid #ccc; border-radius: 8px;">
             <h6>Legend</h6>
@@ -180,8 +179,8 @@
                 <li><span style="display:inline-block;width:15px;height:15px;background:red;margin-right:5px;"></span> Low Flow (High Density)</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:orange;margin-right:5px;"></span> Moderate Low Flow</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:yellow;margin-right:5px;"></span> Moderate Flow</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:green;margin-right:5px;"></span> Moderate High Flow</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:blue;margin-right:5px;"></span> High Flow (Low Density)</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;margin-right:5px;"></span> Moderate High Flow</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:lime;margin-right:5px;"></span> High Flow (Low Density)</li>
             </ul>
 
             <div><strong>Weather:</strong></div>
@@ -193,8 +192,8 @@
             <div><strong>Air Quality (AQI):</strong></div>
             <ul style="padding-left: 20px;">
                 <li><span style="display:inline-block;width:15px;height:15px;background:lime;opacity:0.5;margin-right:5px;"></span> AQI 1 - Good</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:yellow;opacity:0.5;margin-right:5px;"></span> AQI 2 - Fair</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;opacity:0.5;margin-right:5px;"></span> AQI 2 - Fair</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:yellow;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:orange;opacity:0.5;margin-right:5px;"></span> AQI 4 - Poor</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:red;opacity:0.5;margin-right:5px;"></span> AQI 5 - Very Poor</li>
             </ul>
@@ -203,15 +202,15 @@
     <div id="forecastOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:1050;">
         <div style="background:white; width:600px; max-height:80vh; margin:5% auto; padding:20px; overflow-y:auto; border-radius:8px; position:relative;">
             <h4>Add Forecast Parameters</h4>
+            <div class="mt-3 text-end">
+                <button class="btn btn-primary" id="btnSaveOverlay">Save</button>
+                <button class="btn btn-secondary" id="btnCloseOverlay">Close</button>
+            </div>
             <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input" id="masterCheck" />
                 <label for="masterCheck" class="form-check-label"><strong>Select All Sites</strong></label>
             </div>
             <div id="overlaySiteSelector"></div>
-            <div class="mt-3 text-end">
-                <button class="btn btn-primary" id="btnSaveOverlay">Save</button>
-                <button class="btn btn-secondary" id="btnCloseOverlay">Close</button>
-            </div>
         </div>
     </div>
 
@@ -228,6 +227,7 @@
         Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwMzQ2N2UzMi0wNzIzLTQzN2ItYWExYi0xZWM5MWZjNTQzNjUiLCJpZCI6MzE5MDk5LCJpYXQiOjE3NTE4NjY0NTJ9.Z7ZakLa9T-7er2aTf9m_MEhF8Di-gTDted1Xn-igj9U';
         console.log("locationData", window.siteData);
         console.log("forecastData" ,window.forecastData);
+        var overlaySelections = {};
         window.siteData.forEach((site, index) => {
             $('#hiddenSiteSelector').append(`
                 <div class="form-check mt-2">
@@ -243,7 +243,8 @@
                 </div>
             `);
         });
-        var viewer = new Cesium.Viewer("cesiumContainer", {
+        const viewer = new Cesium.Viewer("cesiumContainer", {
+            //terrain: Cesium.Terrain.fromWorldTerrain(),
             animation: false,
             baseLayerPicker: true,
             navigationHelpButton: false,
@@ -255,11 +256,14 @@
             });
 
         // onpageshow 3d tiles
-        // async function loadTileset(){
-        //     const osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
-        //     viewer.scene.primitives.add(osmBuildingsTileset);
-        // }
-
+        async function loadTileset(){
+            try{
+                const osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
+                viewer.scene.primitives.add(osmBuildingsTileset);
+            }catch (error) {
+              console.log(`Error loading tileset: ${error}`);
+            }
+        }
         // loadTileset();
 
         function clearEntities() {
@@ -312,7 +316,7 @@
                         font: "14pt sans-serif",
                         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                         outlineWidth: 2,
-                        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                        verticalOrigin: Cesium.VerticalOrigin.TOP,
                         pixelOffset: new Cesium.Cartesian2(0, 10)
                     },
                     properties: {
@@ -375,8 +379,8 @@
                 case 'low': return Cesium.Color.RED;
                 case 'moderate_low': return Cesium.Color.ORANGE;
                 case 'moderate': return Cesium.Color.YELLOW;
-                case 'moderate_high': return Cesium.Color.GREEN;
-                case 'high': return Cesium.Color.BLUE;
+                case 'moderate_high': return Cesium.Color.CYAN;
+                case 'high': return Cesium.Color.LIME;
                 default: return Cesium.Color.BLUE;
             }
         }
@@ -408,8 +412,8 @@
         function getAqiColor(aqi) {
             switch (aqi) {
                 case 1: return Cesium.Color.LIME;
-                case 2: return Cesium.Color.YELLOW;
-                case 3: return Cesium.Color.CYAN;
+                case 2: return Cesium.Color.CYAN;
+                case 3: return Cesium.Color.YELLOW;
                 case 4: return Cesium.Color.ORANGE;
                 case 5: return Cesium.Color.RED;
                 default: return Cesium.Color.CYAN;
@@ -459,8 +463,8 @@
                     fillColor: Cesium.Color.DODGERBLUE,
                     showBackground: true,
                     backgroundColor: Cesium.Color.WHITE.withAlpha(0.6),
-                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                    pixelOffset: new Cesium.Cartesian2(0, -20),
+                    verticalOrigin: Cesium.VerticalOrigin.TOP,
+                    pixelOffset: new Cesium.Cartesian2(0, 10),
                     position: Cesium.Cartesian3.fromDegrees(lon, lat),
                 },
                 properties: {
@@ -544,15 +548,36 @@
             $(this).addClass('active');
         });
 
-        $('#btnForecast').click(async function () {
-            const date = $('#forecastDate').val();
-            const hour = $('#forecastHour').val();
-            if (!date || !hour) {
-                showAlert("Please select date and hour","warning");
-                return;
-            }
-            const datetime = `${date} ${hour}:00:00`;
+        function populateOverlaySites() {
+            const container = $('#overlaySiteSelector');
+            container.empty();
+            let allSelected = true;
 
+            window.siteData.forEach((site, index) => {
+                const selected = overlaySelections[site.site_code]?.checked ?? true;
+                const density = overlaySelections[site.site_code]?.density ?? 'moderate';
+
+                if (!selected) allSelected = false;
+
+                container.append(`
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input site-check" id="overlay_site_${index}"
+                               data-sitecode="${site.site_code}" data-lat="${site.latitude}" data-lon="${site.longitude}" ${selected ? 'checked' : ''}>
+                        <label class="form-check-label" for="overlay_site_${index}">${site.site_name}</label>
+                        <select class="form-control form-control-sm traffic-density mt-1">
+                            <option value="low" ${density === 'low' ? 'selected' : ''}>Low</option>
+                            <option value="moderate_low" ${density === 'moderate_low' ? 'selected' : ''}>Moderate Low</option>
+                            <option value="moderate" ${density === 'moderate' ? 'selected' : ''}>Moderate</option>
+                            <option value="moderate_high" ${density === 'moderate_high' ? 'selected' : ''}>Moderate High</option>
+                            <option value="high" ${density === 'high' ? 'selected' : ''}>High</option>
+                        </select>
+                    </div>
+                `);
+            });
+
+            $('#masterCheck').prop('checked', allSelected);
+        }
+        async function reloadForecastData(datetime){
             const traffic_data_list = [];
             $('.site-check:checked').each(function () {
                 const lat = parseFloat($(this).data('lat'));
@@ -571,7 +596,7 @@
             };
 
 
-            $('#loadingSpinner').show();
+            //$('#loadingSpinner').show();
             try{
             const response = await fetch('/Forecast/GetForecastDataByDate', {
                 method: 'POST',
@@ -582,9 +607,6 @@
             const result = await response.json();
             if (result && result.data) {
                 window.forecastData = result.data;
-                clearEntities();
-                loadSites();
-                showCombined();
             } else {
                 showAlert("No forecast data returned.","warning");
             }
@@ -592,35 +614,79 @@
                 console.error("Error fetching forecast data:", error);
                 showAlert("Failed to fetch forecast data. Please try again.", "danger");
             } finally {
-                $('#loadingSpinner').hide();
+                //$('#loadingSpinner').hide();
             }
+        }
+
+        $("#queryDate").change(async function (e) {
+            e.preventDefault();
+            $('#loadingSpinner').show();
+            let dateVal = $("#queryDate").val();
+            const hourVal = $("#queryHour").val();
+
+            if (!dateVal || !hourVal) {
+                $('#loadingSpinner').hide();
+                showAlert("Please select both date and hour.","warning");
+                return;
+            }
+
+            // Construct ISO datetime string
+            const datetimeString = `${dateVal} ${hourVal}:00:00`;
+            const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
+            const dateObj = new Date(isoString);
+            var validateTime = new Date();             // current datetime
+            validateTime.setHours(validateTime.getHours() - 1);
+            if(dateObj<validateTime){
+                $('#loadingSpinner').hide();
+                showAlert("Selected datetime should should be current or in future.","danger");
+                return;
+            }
+            await reloadForecastData(datetimeString);
+
+            clearEntities();
+            loadSites();
+            showCombined();
+            $('#loadingSpinner').hide();
         });
+
+        $("#queryHour").change(async function (e) {
+            e.preventDefault();
+            $('#loadingSpinner').show();
+            let dateVal = $("#queryDate").val();
+            const hourVal = $("#queryHour").val();
+
+            if (!dateVal || !hourVal) {
+                $('#loadingSpinner').hide();
+                showAlert("Please select both date and hour.","warning");
+                return;
+            }
+
+            // Construct ISO datetime string
+            const datetimeString = `${dateVal} ${hourVal}:00:00`;
+            const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
+            const dateObj = new Date(isoString);
+            var validateTime = new Date();             // current datetime
+            validateTime.setHours(validateTime.getHours() - 1);
+            if(dateObj<validateTime){
+                $('#loadingSpinner').hide();
+                showAlert("Selected datetime should should be current or in future.","danger");
+                return;
+            }
+            await reloadForecastData(datetimeString);
+
+            clearEntities();
+            loadSites();
+            showCombined();
+            $('#loadingSpinner').hide();
+        });
+
+
 
         // --- page events end ---
 
         // --- overlay function and events ---
 
         // Build overlay site selectors dynamically (same structure)
-        function populateOverlaySites() {
-            const container = $('#overlaySiteSelector');
-            container.empty();
-            window.siteData.forEach((site, index) => {
-                container.append(`
-                    <div class="form-check mt-2">
-                        <input type="checkbox" class="form-check-input site-check" id="overlay_site_${index}" data-lat="${site.latitude}" data-lon="${site.longitude}">
-                        <label class="form-check-label" for="overlay_site_${index}">${site.site_name}</label>
-                        <select class="form-control form-control-sm traffic-density mt-1">
-                            <option value="low">Low</option>
-                            <option value="moderate_low">Moderate Low</option>
-                            <option value="moderate" selected>Moderate</option>
-                            <option value="moderate_high">Moderate High</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                `);
-            });
-        }
-
         // Show overlay
         $('#btnOpenOverlay').click(function () {
             populateOverlaySites();
@@ -662,9 +728,21 @@
                     </div>
                 `);
             });
+            overlaySelections = {}; // Reset
+            $('#overlaySiteSelector .site-check').each(function () {
+                const siteCode = $(this).data('sitecode');
+                const checked = $(this).is(':checked');
+                const density = $(this).siblings('select.traffic-density').val();
+                overlaySelections[siteCode] = { checked, density };
+            });
+
             $('#forecastOverlay').fadeOut();
         });
 
+        $('#overlaySiteSelector').on('change', '.site-check', function () {
+            const allChecked = $('#overlaySiteSelector .site-check').length === $('#overlaySiteSelector .site-check:checked').length;
+            $('#masterCheck').prop('checked', allChecked);
+        });
 
         // --- end overlay function and events ---
 

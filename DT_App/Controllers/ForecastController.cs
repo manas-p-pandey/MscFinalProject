@@ -45,9 +45,29 @@ namespace DT_App.Controllers
         {
             try
             {
-                ViewBag.SiteList = await _siteClient.GetSitesAsync();
-                var hdResponse = await _dataClient.GetForecastDataAsync(request);
-                ViewBag.DataList = hdResponse.Data;
+                var siteData = await _siteClient.GetSitesAsync();
+                ViewBag.SiteList = siteData;
+                if (request.TrafficData==null || !request.TrafficData.Any())
+                {
+                    var traffic = new List<TrafficData>();
+                    foreach (var site in siteData)
+                    {
+                        var trafficData = new TrafficData
+                        {
+                            Latitude = site.latitude??0,
+                            Longitude = site.longitude??0,
+                            TrafficDensity = "moderate_low" // Default value, can be adjusted
+                        };
+                        traffic.Add(trafficData);
+                    }
+                    request = new ForecastRequest
+                    {
+                        DateTime = queryDatetime,
+                        TrafficData = traffic
+                    };
+                }
+                var fResponse = await _dataClient.GetForecastDataAsync(request);
+                ViewBag.DataList = fResponse.Data;
                 ViewBag.LastQueryDate = queryDatetime;
                 return true;
             }
