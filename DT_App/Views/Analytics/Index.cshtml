@@ -195,7 +195,7 @@
             <ul style="padding-left: 20px;">
                 <li><span style="display:inline-block;width:15px;height:15px;background:lime;opacity:0.5;margin-right:5px;"></span> AQI 1 - Good</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:yellow;opacity:0.5;margin-right:5px;"></span> AQI 2 - Fair</li>
-                <li><span style="display:inline-block;width:15px;height:15px;background:blue;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:cyan;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:orange;opacity:0.5;margin-right:5px;"></span> AQI 4 - Poor</li>
                 <li><span style="display:inline-block;width:15px;height:15px;background:red;opacity:0.5;margin-right:5px;"></span> AQI 5 - Very Poor</li>
             </ul>
@@ -381,12 +381,12 @@
 
         function getAqiColor(aqi) {
             switch (aqi) {
-                case 1: return Cesium.Color.CYAN;
-                case 2: return Cesium.Color.LIME;
-                case 3: return Cesium.Color.YELLOW;
+                case 1: return Cesium.Color.LIME;
+                case 2: return Cesium.Color.YELLOW;
+                case 3: return Cesium.Color.CYAN;
                 case 4: return Cesium.Color.ORANGE;
                 case 5: return Cesium.Color.RED;
-                default: return Cesium.Color.GRAY;
+                default: return Cesium.Color.CYAN;
             }
         }
 
