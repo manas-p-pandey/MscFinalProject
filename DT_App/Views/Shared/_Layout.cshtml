@@ -84,13 +84,18 @@
                                asp-area=""
                                asp-controller="Analytics"
                                asp-action="Index"
-                               asp-route-viewId="0"
-                               asp-route-queryDatetime="@DateTime.Today.AddHours(-1).ToString("yyyy-MM-dd HH:00:00")">
+                               asp-route-queryDatetime="@DateTime.Now.AddHours(-1).ToString("yyyy-MM-dd HH:00:00")">
                                 Analytics
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link glass-btn" asp-area="" asp-controller="Forecast" asp-action="Index">Forecast</a>
+                            <a class="nav-link glass-btn" 
+                                asp-area="" 
+                                asp-controller="Forecast"
+                                asp-action="Index"
+                                asp-route-queryDatetime="@DateTime.Now.ToString("yyyy-MM-dd HH:00:00")">
+                                Forecast
+                            </a>
                         </li>
                     </ul>
                 </div>

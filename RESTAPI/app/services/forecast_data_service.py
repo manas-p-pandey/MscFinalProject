@@ -4,7 +4,7 @@ import redis
 import pickle
 import requests
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from app.schemas.forecast_data import TrafficData, ForecastResponse
 from app.models.site import Site
@@ -13,13 +13,12 @@ from sqlalchemy.future import select
 from sklearn.preprocessing import StandardScaler,LabelEncoder
 
 MODEL_DIR = "./forecast_model"
-OPENWEATHER_KEY = os.getenv("OPENWEATHER_API_KEY","0fb0f50c2badb10762006b6384c5b5da")
+OPENWEATHER_KEY = os.getenv("OPENWEATHER_API_KEY", "0fb0f50c2badb10762006b6384c5b5da")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DB = int(os.getenv("REDIS_DB", 0))
 
-WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
-FORECAST_URL = "https://pro.openweathermap.org/data/2.5/forecast/hourly"
+ONECALL_URL = "https://api.openweathermap.org/data/3.0/onecall/timemachine"
 
 INVERSE_TRAFFIC = {
     "low": "high",
@@ -55,46 +54,60 @@ async def get_forecast_data(db: AsyncSession, target_dt: datetime, traffic_data:
     site_encoder.fit(site_codes)
 
     forecast_results = []
-    now = datetime.utcnow()
-    is_now = (target_dt.date() == now.date() and target_dt.hour == now.hour)
-
     for td in traffic_data:
         matching_sites = [s for s in sites if round(s.latitude, 4) == round(td.latitude, 4) and round(s.longitude, 4) == round(td.longitude, 4)]
         if not matching_sites:
             continue
         site = matching_sites[0]
 
-        # Fetch weather
-        params = {"lat": td.latitude, "lon": td.longitude, "appid": OPENWEATHER_KEY, "units": "metric"}
-        if is_now:
-            resp = requests.get(WEATHER_URL, params=params)
-            print(WEATHER_URL)
-            print(params)
-            data = resp.json()
-        else:
-            resp = requests.get(FORECAST_URL, params=params)
-            print(FORECAST_URL)
-            print(params)
-            forecast = resp.json().get("list", [])
-            data = next((f for f in forecast if f["dt_txt"].startswith(target_dt.strftime("%Y-%m-%d %H"))), None)
-            if not data:
-                continue
+        # Fetch weather data (One Call API)
+        params = {
+            "lat": td.latitude,
+            "lon": td.longitude,
+            "dt": int(target_dt.replace(tzinfo=timezone.utc).timestamp()),
+            "appid": OPENWEATHER_KEY
+        }
+        resp = requests.get(ONECALL_URL, params=params)
+        print(ONECALL_URL)
+        print(params)
+        data_json = resp.json()
+        weather_data = data_json.get("data", [])
+        if not weather_data:
+            continue
+        entry = weather_data[0]
 
-        weather = data.get("main", {})
-        wind = data.get("wind", {})
-        clouds = data.get("clouds", {}).get("all", 0)
+        weather_conditions = entry.get("weather", [])
+        if weather_conditions:
+            weather_main = weather_conditions[0].get("main", "")
+            weather_desc = weather_conditions[0].get("description", "")
+        else:
+            weather_main = ""
+            weather_desc = ""
+
+        weather = {
+            "temp": entry.get("temp", 0),
+            "feels_like": entry.get("feels_like", 0),
+            "pressure": entry.get("pressure", 0),
+            "humidity": entry.get("humidity", 0)
+        }
+        wind = {
+            "speed": entry.get("wind_speed", 0),
+            "deg": entry.get("wind_deg", 0)
+        }
+        clouds = entry.get("clouds", 0)
 
         traffic_density_val = list(INVERSE_TRAFFIC.keys()).index(td.traffic_density)
         traffic_flow_val = list(INVERSE_TRAFFIC.keys()).index(INVERSE_TRAFFIC.get(td.traffic_density, "moderate"))
         site_code_enc = int(site_encoder.transform([site.site_code])[0])
 
+        dew_val = entry.get("dew_point", 0)
         features = [
             site_code_enc,
             site.latitude, site.longitude,
             target_dt.hour, target_dt.day, target_dt.month, target_dt.weekday(),
             traffic_flow_val, traffic_density_val,
             weather.get("temp", 0), weather.get("feels_like", 0), weather.get("pressure", 0),
-            weather.get("humidity", 0), weather.get("temp", 0) - 5,
+            weather.get("humidity", 0), dew_val,
             clouds, wind.get("speed", 0), wind.get("deg", 0)
         ]
 
@@ -106,7 +119,7 @@ async def get_forecast_data(db: AsyncSession, target_dt: datetime, traffic_data:
         for pol, model in models.items():
             predictions[pol] = round(float(model.predict(X_scaled)[0]), 2)
 
-        dew_point = round(weather.get("temp", 0) - 5,2)
+        dew_point = round(dew_val, 2)
 
         forecast_results.append(ForecastResponse(
             site_code=site.site_code,
@@ -129,10 +142,12 @@ async def get_forecast_data(db: AsyncSession, target_dt: datetime, traffic_data:
             pressure=weather.get("pressure", 0),
             humidity=weather.get("humidity", 0),
             dew_point=dew_point,
+            clouds=clouds,
             wind_speed=wind.get("speed", 0),
             wind_deg=wind.get("deg", 0),
+            weather_main=weather_main,
+            weather_description=weather_desc,
             traffic_flow=INVERSE_TRAFFIC.get(td.traffic_density, "moderate"),
             traffic_density=td.traffic_density
         ))
-
     return forecast_results

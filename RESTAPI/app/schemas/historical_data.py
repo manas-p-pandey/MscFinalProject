@@ -23,8 +23,11 @@ class Historical_Data(BaseModel):
     pressure: int
     humidity: int
     dew_point: float
+    clouds: int
     wind_speed: float
     wind_deg: int
+    weather_main: str
+    weather_description: str
     traffic_flow: str
     traffic_density: str
 

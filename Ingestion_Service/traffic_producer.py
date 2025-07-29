@@ -194,7 +194,7 @@ def produce_traffic_data():
     upload_model_to_api(model_path)
 
     start_date = datetime.now() - timedelta(days=365)
-    end_date = datetime.now()
+    end_date = datetime.now()+timedelta(hours=+1)
 
     for index, site in site_df.iterrows():
         lat = float(site["latitude"])

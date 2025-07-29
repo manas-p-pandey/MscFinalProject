@@ -24,8 +24,11 @@ namespace DT_App.Models
         public int pressure { set; get; }
         public int humidity { set; get; }
         public double dew_point { set; get; }
+        public int clouds { set; get; }
         public double wind_speed { set; get; }
         public int wind_deg { set; get; }
+        public string weather_main { set; get; }
+        public string weather_description { set; get; }
         public string traffic_flow { set; get; }
         public string traffic_density { set; get; }
     }

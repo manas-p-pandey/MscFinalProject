@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import SessionLocal
 from app.schemas.historical_data import Historical_Data
 from app.services.historical_data_service import historical_service
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 router = APIRouter()
@@ -20,7 +20,7 @@ async def read_records_by_datetime(
     try:
         parsed_dt = datetime.strptime(datetime_value, "%Y-%m-%d %H:%M:%S")        
         print(f"ParsedDate: {parsed_dt}")
-        if parsed_dt.date() >= datetime.now().date():
+        if parsed_dt >= datetime.now()+timedelta(hours=+1):
             raise HTTPException(status_code=401, detail="Date value should be before today's date")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format. Use YYYY-MM-DD HH:00:00")

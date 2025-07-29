@@ -93,6 +93,33 @@
         outline: 2px solid black;
         outline-offset: 2px;
     }
+
+    #siteDetailOverlay {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(255,255,255,0.9);
+        padding: 15px;
+        border-radius: 10px;
+        z-index: 999;
+        width: 300px;
+        max-height: 300px;
+        overflow-y: auto;
+        display: none;
+        font-size: 0.9em;
+    }
+
+    #hoverOverlay {
+        display: none;
+        position: absolute;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 1001;
+    }
 </style>
 
 <script>
@@ -101,6 +128,8 @@
     console.log("Loaded siteData globally:", window.siteData);
     console.log("Loaded historicalData globally:", window.historicalData);
 </script>
+<div id="siteDetailOverlay"></div>
+<div id="hoverOverlay"></div>
 <div class="top-bar">
     <h2>
         @ViewData["Title"] - <label id="lblSubView">Map View</label>
@@ -144,6 +173,33 @@
                 </a>
             </div>
         </div>
+        <div id="mapLegend" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border: 1px solid #ccc; border-radius: 8px;">
+            <h6>Legend</h6>
+
+            <div><strong>Traffic:</strong></div>
+            <ul style="padding-left: 20px;">
+                <li><span style="display:inline-block;width:15px;height:15px;background:red;margin-right:5px;"></span> Low Flow (High Density)</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:orange;margin-right:5px;"></span> Moderate Low Flow</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:yellow;margin-right:5px;"></span> Moderate Flow</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:green;margin-right:5px;"></span> Moderate High Flow</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:blue;margin-right:5px;"></span> High Flow (Low Density)</li>
+            </ul>
+
+            <div><strong>Weather:</strong></div>
+            <ul style="padding-left: 20px;">
+                <li><span style="display:inline-block;width:20px;height:8px;background:cyan;margin-right:5px;"></span> Wind Direction (Arrow)</li>
+                <li><i style="font-size: 0.9em;">Label shows wind speed (e.g. 💨 3.5 m/s)</i></li>
+            </ul>
+
+            <div><strong>Air Quality (AQI):</strong></div>
+            <ul style="padding-left: 20px;">
+                <li><span style="display:inline-block;width:15px;height:15px;background:lime;opacity:0.5;margin-right:5px;"></span> AQI 1 - Good</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:yellow;opacity:0.5;margin-right:5px;"></span> AQI 2 - Fair</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:blue;opacity:0.5;margin-right:5px;"></span> AQI 3 - Moderate</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:orange;opacity:0.5;margin-right:5px;"></span> AQI 4 - Poor</li>
+                <li><span style="display:inline-block;width:15px;height:15px;background:red;opacity:0.5;margin-right:5px;"></span> AQI 5 - Very Poor</li>
+            </ul>
+        </div>
     </div>
 
     <div class="content" id="contentContainer">
@@ -185,26 +241,63 @@
         // --- Load Sites pin ---
 
         var pinBuilder = new Cesium.PinBuilder();
+        function kelvinToC(k) { return (k - 273.15).toFixed(1); }
 
-        function loadSites(){
-            window.siteData.forEach(function(point) {
+        function buildSiteOverlayContent(data) {
+            return `
+                <div><strong>Site:</strong> ${data.site_name} (${data.site_code})</div>
+                <hr/>
+                <div><strong>Weather</strong></div>
+                <div>Condition: ${data.weather_main}</div>
+                <div>Temp: ${kelvinToC(data.temp)} °C</div>
+                <div>Feels Like: ${kelvinToC(data.feels_like)} °C</div>
+                <div>Humidity: ${data.humidity}%</div>
+                <div>Pressure: ${data.pressure} hPa</div>
+                <div>Clouds: ${data.clouds}%</div>
+                <div>Wind: ${data.wind_speed} m/s, ${data.wind_deg}°</div>
+                <hr/>
+                <div><strong>AQI & Pollutants (μg/m³)</strong></div>
+                <div>AQI: ${data.aqi}</div>
+                <div>CO: ${data.co}</div>
+                <div>NO: ${data.no}</div>
+                <div>NO₂: ${data.no2}</div>
+                <div>O₃: ${data.o3}</div>
+                <div>SO₂: ${data.so2}</div>
+                <div>PM2.5: ${data.pm2_5}</div>
+                <div>PM10: ${data.pm10}</div>
+                <div>NH₃: ${data.nh3}</div>
+                <hr/>
+                <div><strong>Traffic</strong></div>
+                <div>Flow: ${data.traffic_flow}</div>
+                <div>Density: ${data.traffic_density}</div>
+            `;
+        }
+
+        function loadSites() {
+            window.siteData.forEach(function (point) {
                 viewer.entities.add({
-                    name: point.site_code,
-                    position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 1.0),
+                    name: point.site_name,
+                    position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 50),
                     billboard: {
                         image: pinBuilder.fromUrl("./images/sensor.png", Cesium.Color.fromCssColorString('#3f51b5'), 48),
                     },
                     label: {
-                        text: point.site_name,
+                        text: point.site_code,
                         font: "14pt sans-serif",
                         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                         outlineWidth: 2,
                         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
                         pixelOffset: new Cesium.Cartesian2(0, 10)
+                    },
+                    properties: {
+                        type: 'site',
+                        site_code: point.site_code
                     }
                 });
             });
         }
+
+        // --- end site data ---
 
 
         // --- show traffic view ---
@@ -224,11 +317,14 @@
                     );
 
                     viewer.entities.add({
-                        name: `Traffic: ${point.traffic_density}`,
+                        name: `Traffic=> density: ${point.traffic_density}, flow:${point.traffic_flow}`,
                         position: offset,
                         point: {
-                            pixelSize: 20,
+                            pixelSize: 10,
                             color: trafficColor,
+                        },
+                        properties: {
+                            type: 'traffic'   // Tag as clickable
                         }
                     });
                 }
@@ -265,16 +361,19 @@
 
         function showPollution(){
             window.historicalData.forEach(point => {
-                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude);
+                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude,-50);
 
                 // --------- AQI via EllipsoidGraphics -----------
                 const aqiColor = getAqiColor(point.aqi);
                 viewer.entities.add({
-                    name: `AQI: ${point.aqi}`,
+                    name: `AQI: ${point.aqi} [co:${point.co}, so2:${point.so2}, no2:${point.no2}, pm10:${point.pm10}, pm2.5:${point.pm2_5}]`,
                     position: pos,
                     ellipsoid: {
-                        radii: new Cesium.Cartesian3(200, 200, 200),
+                        radii: new Cesium.Cartesian3(200, 200, 100),
                         material: aqiColor.withAlpha(0.3),
+                    },
+                    properties: {
+                        type: 'aqi'   // Tag as clickable
                     }
                 });
             });
@@ -282,9 +381,9 @@
 
         function getAqiColor(aqi) {
             switch (aqi) {
-                case 1: return Cesium.Color.LIME;
-                case 2: return Cesium.Color.YELLOW;
-                case 3: return Cesium.Color.BLUE;
+                case 1: return Cesium.Color.CYAN;
+                case 2: return Cesium.Color.LIME;
+                case 3: return Cesium.Color.YELLOW;
                 case 4: return Cesium.Color.ORANGE;
                 case 5: return Cesium.Color.RED;
                 default: return Cesium.Color.GRAY;
@@ -296,16 +395,16 @@
         // --- show weather view ---
         function showWeather(){
             window.historicalData.forEach(point => {
-                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude);
+                const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 5);
 
                 // --------- Weather via PolylineArrow -----------
-                addCenteredWindArrow(viewer, point.latitude, point.longitude, point.wind_deg, point.wind_speed);
+                addCenteredWindArrow(viewer, point.latitude, point.longitude, point.wind_deg, point.wind_speed, (point.temp - 273.15).toFixed(1),point.humidity);
 
             });
         }
 
         // --- Weather/ Wind Data---
-        function addCenteredWindArrow(viewer, lat, lon, wind_deg, wind_speed) {
+        function addCenteredWindArrow(viewer, lat, lon, wind_deg, wind_speed, temp, humidity) {
             const length = 0.005 * wind_speed; // arrow total length in degrees
             const heading = Cesium.Math.toRadians(wind_deg);
 
@@ -319,6 +418,7 @@
             const endLat = lat + dy;
 
             viewer.entities.add({
+                name: `Wind: ${wind_speed} m/s, ${wind_deg}°, Temperature: ${temp}°C, Humidity: ${humidity}%`,
                 polyline: {
                     positions: Cesium.Cartesian3.fromDegreesArray([
                         startLon, startLat,
@@ -336,15 +436,18 @@
                     verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
                     pixelOffset: new Cesium.Cartesian2(0, -20),
                     position: Cesium.Cartesian3.fromDegrees(lon, lat),
+                },
+                properties: {
+                    type: 'weather'   // Tag as clickable
                 }
             });
         }
         // --- end weather methods ---
 
         function showCombined() {
-            showTraffic();
-            showWeather();
             showPollution();
+            showWeather();
+            showTraffic();
         }
 
 
@@ -409,29 +512,29 @@
         $("#btnTraffic").click(function (e) {
             e.preventDefault();
             clearEntities();
-            loadSites();
             showTraffic();
+            loadSites();
         });
 
         $("#btnWeather").click(function (e) {
             e.preventDefault();
             clearEntities();
-            loadSites();
             showWeather();
+            loadSites();
         });
 
         $("#btnPollution").click(function (e) {
             e.preventDefault();
             clearEntities();
-            loadSites();
             showPollution();
+            loadSites();
         });
 
         $("#btnCombined").click(function (e) {
             e.preventDefault();
             clearEntities();
-            loadSites();
             showCombined();
+            loadSites();
         });
 
         $('.menu-buttons button').on('click', function () {
@@ -460,7 +563,7 @@
             showCombined();
         });
 
-        // -- page events end ---
+        // --- page events end ---
 
 
         // -- default actions ---
@@ -477,8 +580,8 @@
         });
 
         clearEntities();
-        loadSites();
         showCombined();
+        loadSites();
 
     </script>
 }
