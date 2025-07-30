@@ -244,7 +244,7 @@
             `);
         });
         const viewer = new Cesium.Viewer("cesiumContainer", {
-            //terrain: Cesium.Terrain.fromWorldTerrain(),
+            terrain: Cesium.Terrain.fromWorldTerrain(),
             animation: false,
             baseLayerPicker: true,
             navigationHelpButton: false,
@@ -255,6 +255,8 @@
             timeline: false
             });
 
+        viewer.scene.globe.depthTestAgainstTerrain = false; // Enable depth testing against terrain
+
         // onpageshow 3d tiles
         async function loadTileset(){
             try{
@@ -264,7 +266,7 @@
               console.log(`Error loading tileset: ${error}`);
             }
         }
-        // loadTileset();
+        loadTileset();
 
         function clearEntities() {
             viewer.entities.removeAll();
@@ -343,7 +345,8 @@
                     // slight random offset to avoid exact overlap
                     const offset = Cesium.Cartesian3.fromDegrees(
                         point.longitude + (Math.random() - 0.5) * 0.0001,
-                        point.latitude + (Math.random() - 0.5) * 0.0001
+                        point.latitude + (Math.random() - 0.5) * 0.0001,
+                        1
                     );
 
                     viewer.entities.add({
@@ -399,7 +402,7 @@
                     name: `AQI: ${point.aqi} [co:${point.co}, so2:${point.so2}, no2:${point.no2}, pm10:${point.pm10}, pm2.5:${point.pm2_5}]`,
                     position: pos,
                     ellipsoid: {
-                        radii: new Cesium.Cartesian3(200, 200, 100),
+                        radii: new Cesium.Cartesian3(250, 250, 150),
                         material: aqiColor.withAlpha(0.2),
                     },
                     properties: {
@@ -454,7 +457,7 @@
                         startLon, startLat,
                         endLon, endLat
                     ]),
-                    positionss: Cesium.Cartesian3.fromDegrees(lon, lat, 100),
+                    positionss: Cesium.Cartesian3.fromDegrees(lon, lat, 50),
                     width: 10,
                     material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.CYAN),
                 },
