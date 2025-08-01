@@ -620,7 +620,7 @@
                 console.error("Error fetching forecast data:", error);
                 showAlert("Failed to fetch forecast data. Please try again.", "danger");
             } finally {
-                //$('#loadingSpinner').hide();
+                $('#loadingSpinner').hide();
             }
         }
 
@@ -640,8 +640,7 @@
             const datetimeString = `${dateVal} ${hourVal}:00:00`;
             const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
             const dateObj = new Date(isoString);
-            var validateTime = new Date();             // current datetime
-            validateTime.setHours(validateTime.getHours() - 1);
+            var validateTime = new Date();
             if(dateObj<validateTime){
                 $('#loadingSpinner').hide();
                 showAlert("Selected datetime should should be current or in future.","danger");
@@ -671,8 +670,7 @@
             const datetimeString = `${dateVal} ${hourVal}:00:00`;
             const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
             const dateObj = new Date(isoString);
-            var validateTime = new Date();             // current datetime
-            validateTime.setHours(validateTime.getHours() - 1);
+            var validateTime = new Date();
             if(dateObj<validateTime){
                 $('#loadingSpinner').hide();
                 showAlert("Selected datetime should should be current or in future.","danger");
