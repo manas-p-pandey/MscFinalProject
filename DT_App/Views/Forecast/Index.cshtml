@@ -345,7 +345,7 @@
                     const offset = Cesium.Cartesian3.fromDegrees(
                         point.longitude + (Math.random() - 0.5) * 0.0001,
                         point.latitude + (Math.random() - 0.5) * 0.0001,
-                        1
+                        0
                     );
 
                     viewer.entities.add({
@@ -457,7 +457,7 @@
                         startLon, startLat,
                         endLon, endLat
                     ]),
-                    positionss: Cesium.Cartesian3.fromDegrees(lon, lat, 5),
+                    positionss: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
                     heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
                     width: 10,
                     material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.CYAN),
