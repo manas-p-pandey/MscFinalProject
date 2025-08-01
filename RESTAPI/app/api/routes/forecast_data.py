@@ -29,7 +29,8 @@ async def get_forecast_data(req: ForecastRequest, db: AsyncSession = Depends(get
         raise HTTPException(status_code=400, detail="Invalid datetime format. Use YYYY-MM-DD HH:00:00")
     
     try:
-        results = await forecast_data_service.get_forecast_data(db, req.datetime, req.traffic_data)
+        unique_traffic_data = list({(item.latitude, item.longitude): item for item in req.traffic_data}.values())
+        results = await forecast_data_service.get_forecast_data(db, req.datetime, unique_traffic_data)
         print(f"{len(results)} row(s) returned matching datetime")
     except Exception as e:
         traceback.print_exc()
