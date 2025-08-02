@@ -333,7 +333,7 @@
 
         // --- show traffic view ---
         function showTraffic(){
-            window.historicalData.forEach(point => {
+            window.forecastData.forEach(point => {
                 const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude);
 
                 // --------- Traffic via PointGraphics -----------
@@ -392,7 +392,7 @@
 
         // --- Color for AQI level ---
         function showPollution(){
-            window.historicalData.forEach(point => {
+            window.forecastData.forEach(point => {
                 const pos = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude,-5);
 
                 // --------- AQI via EllipsoidGraphics -----------
