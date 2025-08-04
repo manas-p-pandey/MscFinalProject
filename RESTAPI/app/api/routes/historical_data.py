@@ -25,7 +25,7 @@ async def read_records_by_datetime(
 
         # Check if it's not a future datetime
         if parsed_dt >= datetime.now(timezone.utc):
-            raise HTTPException(status_code=401, detail="Date value should be before today's date")
+            raise HTTPException(status_code=400, detail="Date value should be before today's date")
         
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format. Use YYYY-MM-DD HH:00:00")

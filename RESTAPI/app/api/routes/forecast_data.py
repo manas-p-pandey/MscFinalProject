@@ -23,7 +23,7 @@ async def get_forecast_data(req: ForecastRequest, db: AsyncSession = Depends(get
 
         # Check if it's not a future datetime
         if parsed_dt < datetime.now(timezone.utc):
-            raise HTTPException(status_code=401, detail="Date value should be current or 4 days in future")
+            raise HTTPException(status_code=400, detail="Date value should be current or 4 days in future")
         
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid datetime format. Use YYYY-MM-DD HH:00:00")

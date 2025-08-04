@@ -472,7 +472,7 @@
                     showAlert("No data found in response","warning");
                 }
             } catch (err) {
-                showAlert("Error fetching historical data:"+ err,"danger");
+                showAlert(err,"danger");
             }finally {
                 //$('#loadingSpinner').hide();
             }
@@ -563,7 +563,8 @@
             const datetimeString = `${dateVal} ${hourVal}:00:00`;
             const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
             const dateObj = new Date(isoString);
-            var validateTime = new Date();
+            var now = new Date();
+            var validateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0);
             if(dateObj>=validateTime){
                 $('#loadingSpinner').hide();
                 showAlert("Selected datetime should be 1 hour prior to current datetime.","danger");
@@ -593,7 +594,8 @@
             const datetimeString = `${dateVal} ${hourVal}:00:00`;
             const isoString = datetimeString.replace(" ", "T");  // Convert to ISO format
             const dateObj = new Date(isoString);
-            var validateTime = new Date(); 
+            var now = new Date();
+            var validateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0);
             if(dateObj>=validateTime){
                 $('#loadingSpinner').hide();
                 showAlert("Selected datetime should be 1 hour prior to current datetime.","danger");
